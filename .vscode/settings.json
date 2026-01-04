@@ -1,0 +1,12 @@
+{
+    // 文件编码设置
+    "[markdown]": {
+        "files.encoding": "utf8"
+    },
+    // 为特定文件指定编码
+    "files.associations": {
+        "**/MDK-ARM/CLAUDE.md": "markdown"
+    },
+    // 确保所有 .md 文件使用 UTF-8 编码
+    "files.autoGuessEncoding": true
+}
