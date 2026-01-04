@@ -1,0 +1,96 @@
+# Keil MDK-ARM 编译输出
+# Keil MDK-ARM Build Outputs
+
+# 编译生成的目录
+MDK-ARM/standard_tpye_c/
+MDK-ARM/build/
+MDK-ARM/DebugConfig/
+MDK-ARM/RTE/
+
+# 编译日志
+*.build_log.htm
+build_log.txt
+
+# Keil 项目文件（保留 .uvprojx，但排除用户配置）
+*.uvguix.*
+*.uvoptx
+*.bak
+*.dep
+*.axf
+*.htm
+*.lnp
+*.sct
+*.map
+*.hex
+*.bin
+*.elf
+
+# 目标文件和库文件
+*.o
+*.obj
+*.crf
+*.d
+*.lst
+*.lib
+*.a
+
+# 链接器输出
+*.exe
+*.out
+
+# Keil 临时文件
+*.__i
+*._ia
+
+# VS Code EIDE 扩展文件
+.vscode/keil-assistant.log
+.vscode/uv4.log
+.vscode/uv4.log.lock
+
+# 调试文件
+*.ini
+EventRecorderStub.scvd
+
+# JLink 调试文件
+JLinkLog.txt
+JLinkSettings.ini
+
+# ST-Link 工具文件
+*.jlink
+
+# 系统生成文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 临时文件
+nul
+tmp/
+temp/
+
+# Python 缓存（如果使用 Python 脚本）
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 用户特定配置（保留模板，排除个人配置）
+# .vscode/settings.json  # 如果需要共享配置，请注释此行
+
+# CubeMX 生成的备份
+*.ioc.bak
+Src/*.bak
+Inc/*.bak
+
+# 编译器特定文件
+*.i
+*.ii
+*.s
+
+# 调试会话文件
+*.dbgconf
+
+# 其他编译工具链输出
+*.asm
+*.su
