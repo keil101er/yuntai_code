@@ -94,3 +94,5 @@ Inc/*.bak
 # 其他编译工具链输出
 *.asm
 *.su
+*.jdebug
+*.jdebug.user
