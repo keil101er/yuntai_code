@@ -2,7 +2,7 @@
   ****************************(C) COPYRIGHT 2019 DJI****************************
   * @file       chassis_behaviour.c/h
   * @brief      according to remote control, change the chassis behaviour.
-  *             ¸ù¾İÒ£¿ØÆ÷µÄÖµ£¬¾ö¶¨µ×ÅÌĞĞÎª¡£
+  *             æ ¹æ®é¥æ§å™¨çš„å€¼ï¼Œå†³å®šåº•ç›˜è¡Œä¸ºã€‚
   * @note       
   * @history
   *  Version    Date            Author          Modification
@@ -44,31 +44,31 @@
         {
             chassis_xxx_xxx_control(vx_set, vy_set, angle_set, chassis_move_rc_to_vector);
         }
-    Èç¹ûÒªÌí¼ÓÒ»¸öĞÂµÄĞĞÎªÄ£Ê½
-    1.Ê×ÏÈ£¬ÔÚchassis_behaviour.hÎÄ¼şÖĞ£¬ Ìí¼ÓÒ»¸öĞÂĞĞÎªÃû×ÖÔÚ chassis_behaviour_e
+    å¦‚æœè¦æ·»åŠ ä¸€ä¸ªæ–°çš„è¡Œä¸ºæ¨¡å¼
+    1.é¦–å…ˆï¼Œåœ¨chassis_behaviour.hæ–‡ä»¶ä¸­ï¼Œ æ·»åŠ ä¸€ä¸ªæ–°è¡Œä¸ºåå­—åœ¨ chassis_behaviour_e
     erum
     {  
         ...
         ...
-        CHASSIS_XXX_XXX, // ĞÂÌí¼ÓµÄ
+        CHASSIS_XXX_XXX, // æ–°æ·»åŠ çš„
     }chassis_behaviour_e,
 
-    2. ÊµÏÖÒ»¸öĞÂµÄº¯Êı chassis_xxx_xxx_control(fp32 *vx, fp32 *vy, fp32 *wz, chassis_move_t * chassis )
-        "vx,vy,wz" ²ÎÊıÊÇµ×ÅÌÔË¶¯¿ØÖÆÊäÈëÁ¿
-        µÚÒ»¸ö²ÎÊı: 'vx' Í¨³£¿ØÖÆ×İÏòÒÆ¶¯,ÕıÖµ Ç°½ø£¬ ¸ºÖµ ºóÍË
-        µÚ¶ş¸ö²ÎÊı: 'vy' Í¨³£¿ØÖÆºáÏòÒÆ¶¯,ÕıÖµ ×óÒÆ, ¸ºÖµ ÓÒÒÆ
-        µÚÈı¸ö²ÎÊı: 'wz' ¿ÉÄÜÊÇ½Ç¶È¿ØÖÆ»òÕßĞı×ªËÙ¶È¿ØÖÆ
-        ÔÚÕâ¸öĞÂµÄº¯Êı, ÄãÄÜ¸ø "vx","vy",and "wz" ¸³ÖµÏëÒªµÄËÙ¶È²ÎÊı
-    3.  ÔÚ"chassis_behaviour_mode_set"Õâ¸öº¯ÊıÖĞ£¬Ìí¼ÓĞÂµÄÂß¼­ÅĞ¶Ï£¬¸øchassis_behaviour_mode¸³Öµ³ÉCHASSIS_XXX_XXX
-        ÔÚº¯Êı×îºó£¬Ìí¼Ó"else if(chassis_behaviour_mode == CHASSIS_XXX_XXX)" ,È»ºóÑ¡ÔñÒ»ÖÖµ×ÅÌ¿ØÖÆÄ£Ê½
-        4ÖÖ:
-        CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW : 'vx' and 'vy'ÊÇËÙ¶È¿ØÖÆ£¬ 'wz'ÊÇ½Ç¶È¿ØÖÆ ÔÆÌ¨ºÍµ×ÅÌµÄÏà¶Ô½Ç¶È
-        Äã¿ÉÒÔÃüÃû³É"xxx_angle_set"¶ø²»ÊÇ'wz'
-        CHASSIS_VECTOR_FOLLOW_CHASSIS_YAW : 'vx' and 'vy'ÊÇËÙ¶È¿ØÖÆ£¬ 'wz'ÊÇ½Ç¶È¿ØÖÆ µ×ÅÌµÄÍÓÂİÒÇ¼ÆËã³öµÄ¾ø¶Ô½Ç¶È
-        Äã¿ÉÒÔÃüÃû³É"xxx_angle_set"
-        CHASSIS_VECTOR_NO_FOLLOW_YAW : 'vx' and 'vy'ÊÇËÙ¶È¿ØÖÆ£¬ 'wz'ÊÇĞı×ªËÙ¶È¿ØÖÆ
-        CHASSIS_VECTOR_RAW : Ê¹ÓÃ'vx' 'vy' and 'wz'Ö±½ÓÏßĞÔ¼ÆËã³ö³µÂÖµÄµçÁ÷Öµ£¬µçÁ÷Öµ½«Ö±½Ó·¢ËÍµ½can ×ÜÏßÉÏ
-    4.  ÔÚ"chassis_behaviour_control_set" º¯ÊıµÄ×îºó£¬Ìí¼Ó
+    2. å®ç°ä¸€ä¸ªæ–°çš„å‡½æ•° chassis_xxx_xxx_control(fp32 *vx, fp32 *vy, fp32 *wz, chassis_move_t * chassis )
+        "vx,vy,wz" å‚æ•°æ˜¯åº•ç›˜è¿åŠ¨æ§åˆ¶è¾“å…¥é‡
+        ç¬¬ä¸€ä¸ªå‚æ•°: 'vx' é€šå¸¸æ§åˆ¶çºµå‘ç§»åŠ¨,æ­£å€¼ å‰è¿›ï¼Œ è´Ÿå€¼ åé€€
+        ç¬¬äºŒä¸ªå‚æ•°: 'vy' é€šå¸¸æ§åˆ¶æ¨ªå‘ç§»åŠ¨,æ­£å€¼ å·¦ç§», è´Ÿå€¼ å³ç§»
+        ç¬¬ä¸‰ä¸ªå‚æ•°: 'wz' å¯èƒ½æ˜¯è§’åº¦æ§åˆ¶æˆ–è€…æ—‹è½¬é€Ÿåº¦æ§åˆ¶
+        åœ¨è¿™ä¸ªæ–°çš„å‡½æ•°, ä½ èƒ½ç»™ "vx","vy",and "wz" èµ‹å€¼æƒ³è¦çš„é€Ÿåº¦å‚æ•°
+    3.  åœ¨"chassis_behaviour_mode_set"è¿™ä¸ªå‡½æ•°ä¸­ï¼Œæ·»åŠ æ–°çš„é€»è¾‘åˆ¤æ–­ï¼Œç»™chassis_behaviour_modeèµ‹å€¼æˆCHASSIS_XXX_XXX
+        åœ¨å‡½æ•°æœ€åï¼Œæ·»åŠ "else if(chassis_behaviour_mode == CHASSIS_XXX_XXX)" ,ç„¶åé€‰æ‹©ä¸€ç§åº•ç›˜æ§åˆ¶æ¨¡å¼
+        4ç§:
+        CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW : 'vx' and 'vy'æ˜¯é€Ÿåº¦æ§åˆ¶ï¼Œ 'wz'æ˜¯è§’åº¦æ§åˆ¶ äº‘å°å’Œåº•ç›˜çš„ç›¸å¯¹è§’åº¦
+        ä½ å¯ä»¥å‘½åæˆ"xxx_angle_set"è€Œä¸æ˜¯'wz'
+        CHASSIS_VECTOR_FOLLOW_CHASSIS_YAW : 'vx' and 'vy'æ˜¯é€Ÿåº¦æ§åˆ¶ï¼Œ 'wz'æ˜¯è§’åº¦æ§åˆ¶ åº•ç›˜çš„é™€èºä»ªè®¡ç®—å‡ºçš„ç»å¯¹è§’åº¦
+        ä½ å¯ä»¥å‘½åæˆ"xxx_angle_set"
+        CHASSIS_VECTOR_NO_FOLLOW_YAW : 'vx' and 'vy'æ˜¯é€Ÿåº¦æ§åˆ¶ï¼Œ 'wz'æ˜¯æ—‹è½¬é€Ÿåº¦æ§åˆ¶
+        CHASSIS_VECTOR_RAW : ä½¿ç”¨'vx' 'vy' and 'wz'ç›´æ¥çº¿æ€§è®¡ç®—å‡ºè½¦è½®çš„ç”µæµå€¼ï¼Œç”µæµå€¼å°†ç›´æ¥å‘é€åˆ°can æ€»çº¿ä¸Š
+    4.  åœ¨"chassis_behaviour_control_set" å‡½æ•°çš„æœ€åï¼Œæ·»åŠ 
         else if(chassis_behaviour_mode == CHASSIS_XXX_XXX)
         {
             chassis_xxx_xxx_control(vx_set, vy_set, angle_set, chassis_move_rc_to_vector);
@@ -85,21 +85,21 @@
 
 typedef enum
 {
-  CHASSIS_ZERO_FORCE,                   //chassis will be like no power,µ×ÅÌÎŞÁ¦, ¸úÃ»ÉÏµçÄÇÑù
-  CHASSIS_NO_MOVE,                      //chassis will be stop,µ×ÅÌ±£³Ö²»¶¯
-  CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW,   //chassis will follow gimbal, usually in infantry,Õı³£²½±øµ×ÅÌ¸úËæÔÆÌ¨
+  CHASSIS_ZERO_FORCE,                   //chassis will be like no power,åº•ç›˜æ— åŠ›, è·Ÿæ²¡ä¸Šç”µé‚£æ ·
+  CHASSIS_NO_MOVE,                      //chassis will be stop,åº•ç›˜ä¿æŒä¸åŠ¨
+  CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW,   //chassis will follow gimbal, usually in infantry,æ­£å¸¸æ­¥å…µåº•ç›˜è·Ÿéšäº‘å°
   CHASSIS_ENGINEER_FOLLOW_CHASSIS_YAW,  //chassis will follow chassis yaw angle, usually in engineer,
                                         //because chassis does have gyro sensor, its yaw angle is calculed by gyro in gimbal and gimbal motor angle,
                                         //if you have a gyro sensor in chassis, please updata yaw, pitch, roll angle in "chassis_feedback_update"  function
-                                        //¹¤³Ìµ×ÅÌ½Ç¶È¿ØÖÆµ×ÅÌ£¬ÓÉÓÚµ×ÅÌÎ´ÓĞÍÓÂİÒÇ£¬¹Ê¶ø½Ç¶ÈÊÇ¼õÈ¥ÔÆÌ¨½Ç¶È¶øµÃµ½£¬
-                                        //Èç¹ûÓĞµ×ÅÌÍÓÂİÒÇÇë¸üĞÂµ×ÅÌµÄyaw£¬pitch£¬roll½Ç¶È ÔÚchassis_feedback_updateº¯ÊıÖĞ
+                                        //å·¥ç¨‹åº•ç›˜è§’åº¦æ§åˆ¶åº•ç›˜ï¼Œç”±äºåº•ç›˜æœªæœ‰é™€èºä»ªï¼Œæ•…è€Œè§’åº¦æ˜¯å‡å»äº‘å°è§’åº¦è€Œå¾—åˆ°ï¼Œ
+                                        //å¦‚æœæœ‰åº•ç›˜é™€èºä»ªè¯·æ›´æ–°åº•ç›˜çš„yawï¼Œpitchï¼Œrollè§’åº¦ åœ¨chassis_feedback_updateå‡½æ•°ä¸­
   CHASSIS_NO_FOLLOW_YAW,                //chassis does not follow angle, angle is open-loop,but wheels have closed-loop speed
-                                        //µ×ÅÌ²»¸úËæ½Ç¶È£¬½Ç¶ÈÊÇ¿ª»·µÄ£¬µ«ÂÖ×ÓÊÇÓĞËÙ¶È»·
+                                        //åº•ç›˜ä¸è·Ÿéšè§’åº¦ï¼Œè§’åº¦æ˜¯å¼€ç¯çš„ï¼Œä½†è½®å­æ˜¯æœ‰é€Ÿåº¦ç¯
   CHASSIS_OPEN                          //the value of remote control will mulitiply a value, get current value that will be sent to can bus
-                                        // Ò£¿ØÆ÷µÄÖµ³ËÒÔ±ÈÀı³ÉµçÁ÷Öµ Ö±½Ó·¢ËÍµ½can×ÜÏßÉÏ
+                                        // é¥æ§å™¨çš„å€¼ä¹˜ä»¥æ¯”ä¾‹æˆç”µæµå€¼ ç›´æ¥å‘é€åˆ°canæ€»çº¿ä¸Š
 } chassis_behaviour_e;
 
-#define CHASSIS_OPEN_RC_SCALE 10 // in CHASSIS_OPEN mode, multiply the value. ÔÚchassis_open Ä£ĞÍÏÂ£¬Ò£¿ØÆ÷³ËÒÔ¸Ã±ÈÀı·¢ËÍµ½canÉÏ
+#define CHASSIS_OPEN_RC_SCALE 10 // in CHASSIS_OPEN mode, multiply the value. åœ¨chassis_open æ¨¡å‹ä¸‹ï¼Œé¥æ§å™¨ä¹˜ä»¥è¯¥æ¯”ä¾‹å‘é€åˆ°canä¸Š
 
 
 
@@ -109,8 +109,8 @@ typedef enum
   * @retval         none
   */
 /**
-  * @brief          Í¨¹ıÂß¼­ÅĞ¶Ï£¬¸³Öµ"chassis_behaviour_mode"³ÉÄÄÖÖÄ£Ê½
-  * @param[in]      chassis_move_mode: µ×ÅÌÊı¾İ
+  * @brief          é€šè¿‡é€»è¾‘åˆ¤æ–­ï¼Œèµ‹å€¼"chassis_behaviour_mode"æˆå“ªç§æ¨¡å¼
+  * @param[in]      chassis_move_mode: åº•ç›˜æ•°æ®
   * @retval         none
   */
 extern void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode);
@@ -125,11 +125,11 @@ extern void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode);
   * @retval         none
   */
 /**
-  * @brief          ÉèÖÃ¿ØÖÆÁ¿.¸ù¾İ²»Í¬µ×ÅÌ¿ØÖÆÄ£Ê½£¬Èı¸ö²ÎÊı»á¿ØÖÆ²»Í¬ÔË¶¯.ÔÚÕâ¸öº¯ÊıÀïÃæ£¬»áµ÷ÓÃ²»Í¬µÄ¿ØÖÆº¯Êı.
-  * @param[out]     vx_set, Í¨³£¿ØÖÆ×İÏòÒÆ¶¯.
-  * @param[out]     vy_set, Í¨³£¿ØÖÆºáÏòÒÆ¶¯.
-  * @param[out]     wz_set, Í¨³£¿ØÖÆĞı×ªÔË¶¯.
-  * @param[in]      chassis_move_rc_to_vector,  °üÀ¨µ×ÅÌËùÓĞĞÅÏ¢.
+  * @brief          è®¾ç½®æ§åˆ¶é‡.æ ¹æ®ä¸åŒåº•ç›˜æ§åˆ¶æ¨¡å¼ï¼Œä¸‰ä¸ªå‚æ•°ä¼šæ§åˆ¶ä¸åŒè¿åŠ¨.åœ¨è¿™ä¸ªå‡½æ•°é‡Œé¢ï¼Œä¼šè°ƒç”¨ä¸åŒçš„æ§åˆ¶å‡½æ•°.
+  * @param[out]     vx_set, é€šå¸¸æ§åˆ¶çºµå‘ç§»åŠ¨.
+  * @param[out]     vy_set, é€šå¸¸æ§åˆ¶æ¨ªå‘ç§»åŠ¨.
+  * @param[out]     wz_set, é€šå¸¸æ§åˆ¶æ—‹è½¬è¿åŠ¨.
+  * @param[in]      chassis_move_rc_to_vector,  åŒ…æ‹¬åº•ç›˜æ‰€æœ‰ä¿¡æ¯.
   * @retval         none
   */
 

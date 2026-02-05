@@ -28,6 +28,7 @@
 #include "gimbal_task.h"
 
 #include "main.h"
+#include <stdlib.h>
 
 #include "cmsis_os.h"
 
@@ -216,7 +217,7 @@ static void J_scope_gimbal_test(void);
 static int16_t  pitch_can_set_current = 0, shoot_can_set_current = 0;
  fp32  yaw_can_set_current  = 0;
 //自瞄时 发给nuc的数据
-//extern TX_AUTO_AIM auto_to_nuc_data;
+extern TX_AUTO_AIM auto_to_nuc_data;
 extern int board_receive_data[8];
 extern robot_status_t robot_state;
 
@@ -230,19 +231,32 @@ extern shoot_control_t shoot_control;          //射击数据
 void gimbal_task(void const *pvParameters)
 {
     //等待陀螺仪任务更新陀螺仪数据
-    //wait a time
-    vTaskDelay(GIMBAL_TASK_INIT_TIME);
+    //wait a time - increased to ensure INS is fully initialized
+    vTaskDelay(GIMBAL_TASK_INIT_TIME * 3);  // Triple the delay
     //gimbal init
     //云台初始化
     gimbal_init(&gimbal_control);
+    
+    // Validate initialization
+    if (gimbal_control.gimbal_INT_angle_point == NULL || 
+        gimbal_control.gimbal_INT_gyro_point == NULL ||
+        gimbal_control.gimbal_yaw_motor.gimbal_motor_measure == NULL ||
+        gimbal_control.gimbal_pitch_motor.gimbal_motor_measure == NULL)
+    {
+        // Initialization failed - enter safe mode
+        while(1)
+        {    
+            vTaskDelay(1000);  // Wait indefinitely
+        }
+    }
 	
 	
     //shoot init
     //射击初始化
-    shoot_init();
+    shoot_init();    
 	
-	
-	
+	//自瞄初始化
+
     //wait for all motor online
     //判断电机是否都上线
 //    while (toe_is _error(YAW_GIMBAL_MOTOR_TOE) || toe_is_error(PITCH_GIMBAL_MOTOR_TOE))
@@ -269,14 +283,13 @@ void gimbal_task(void const *pvParameters)
 	       osDelay(1);
 	         
 		   }
-		//********************************************************************************
-		
+		//********************************************************************************                                
 		//云台行为状态机以及电机状态机设置
         gimbal_set_mode(&gimbal_control,&receive_chassis_data);             //设置云台控制模式
        //电机控制模式切换 电机控制数据过渡
 		gimbal_mode_change_control_transit(&gimbal_control); //电机控制模式切换 控制数据过渡
 		//云台反馈更新
-        gimbal_feedback_update(&gimbal_control);             //云台数据反馈
+         gimbal_feedback_update(&gimbal_control);             //云台数据反馈
 		
 		gimbal_control.yaw_motor_angle = - motor_ecd_to_angle_change(motor_chassis[4].ecd,0);
 			 
@@ -318,7 +331,6 @@ void gimbal_task(void const *pvParameters)
 			    mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,yaw_can_set_current);
 //				mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,0);
 				osDelay(2);
-				
 	// 射击标志为 1：启动摩擦轮进行射击
 	// Shoot flag is 1: Start friction wheels for shooting
 	if(receive_chassis_data.reserve1 ==1)
@@ -332,10 +344,10 @@ void gimbal_task(void const *pvParameters)
 		shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
 		shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
 
-		// PID 速度闭环控制：左摩擦轮正向旋转，右摩擦轮反向旋转（从后方看，两轮相向旋转夹紧弹丸）
+		// PID 速度闭环控制：左摩擦轮反向旋转，右摩擦轮正向旋转（从后方看，两轮相向旋转夹紧弹丸）
 		// PID speed closed-loop control: left wheel rotates forward, right wheel rotates backward (viewed from rear, wheels rotate towards each other to grip projectile)
-		PID_calc(&shoot_control.fric_motor_L_pid, shoot_control.fricL_speed, shoot_control.fric_set);
-		PID_calc(&shoot_control.fric_motor_R_pid, shoot_control.fricR_speed, -shoot_control.fric_set);
+		PID_calc(&shoot_control.fric_motor_L_pid, shoot_control.fricL_speed, -shoot_control.fric_set);
+		PID_calc(&shoot_control.fric_motor_R_pid, shoot_control.fricR_speed, shoot_control.fric_set);
 
 		// 将 PID 输出转换为电机驱动电流（int16_t 范围）
 		// Convert PID output to motor drive current (int16_t range)
@@ -344,7 +356,7 @@ void gimbal_task(void const *pvParameters)
 
 		// 通过 CAN 总线发送摩擦轮电机电流指令
 		// Send friction wheel motor current commands via CAN bus
-		CAN_cmd_fric(shoot_control.fric_l_current,shoot_control.fric_r_current,0,0);
+		CAN_cmd_fric(shoot_control.fric_r_current,shoot_control.fric_l_current,0,0);
 	}
 	// 射击标志为 0：停止摩擦轮
 	// Shoot flag is 0: Stop friction wheels
@@ -361,8 +373,7 @@ void gimbal_task(void const *pvParameters)
 	}
 				
 				
-            }
-    
+         }
 
 #if GIMBAL_TEST_MODE
         J_scope_gimbal_test();
@@ -400,8 +411,16 @@ void gimbal_task(void const *pvParameters)
   */
 void set_cali_gimbal_hook(const uint16_t yaw_offset, const uint16_t pitch_offset, const fp32 max_yaw, const fp32 min_yaw, const fp32 max_pitch, const fp32 min_pitch)
 {
+    // 设置 yaw 电机编码器偏移量（校准中值）
+    // Set yaw motor encoder offset (calibrated center value)
     gimbal_control.gimbal_yaw_motor.offset_ecd = yaw_offset;
+
+    // 设置 yaw 轴最大相对角度限位（单位：弧度）
+    // Set yaw axis maximum relative angle limit (unit: radians)
     gimbal_control.gimbal_yaw_motor.max_relative_angle = max_yaw;
+
+    // 设置 yaw 轴最小相对角度限位（单位：弧度）
+    // Set yaw axis minimum relative angle limit (unit: radians)
     gimbal_control.gimbal_yaw_motor.min_relative_angle = min_yaw;
 
 //    gimbal_control.gimbal_pitch_motor.offset_ecd = pitch_offset;
@@ -673,9 +692,9 @@ static void gimbal_init(gimbal_control_t *init)
     //最一开始都为无力
 	init->gimbal_yaw_motor.gimbal_motor_mode = init->gimbal_yaw_motor.last_gimbal_motor_mode = GIMBAL_MOTOR_RAW;
     init->gimbal_pitch_motor.gimbal_motor_mode = init->gimbal_pitch_motor.last_gimbal_motor_mode = GIMBAL_MOTOR_RAW;
+    
+    
     //初始化yaw电机pid
-	 
-	 
 	//自瞄low pid
 	gimbal_PID_init(&init->gimbal_yaw_motor.gimbal_motor_low_auto_angle_pid, YAW_AUTO_LOW_ABSOLUTE_PID_MAX_OUT, YAW_AUTO_LOW_ABSOLUTE_PID_MAX_IOUT, YAW_AUTO_LOW_ABSOLUTE_PID_KP, YAW_AUTO_LOW_ABSOLUTE_PID_KI, YAW_AUTO_LOW_ABSOLUTE_PID_KD);
     //yaw绝对角度pid初始化
@@ -737,14 +756,52 @@ static void gimbal_set_mode(gimbal_control_t *set_mode,c_fbpara_t *motor)
 int color;
 static void gimbal_feedback_update(gimbal_control_t *feedback_update)
 {
+    auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_HEADER = 0xff;
+	if(0<aim_color_id<10)
+	    {
+			color=1;
+		}
+   else
+		{	
+           color=0;
+		}
+	//判断是否进入自瞄
+	if(feedback_update->gimbal_pitch_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO && feedback_update->gimbal_yaw_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO) 	
+	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =1;
+	else auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =0;
+	/***************************************************************************************************************/
+    float pitch_angle = ((-feedback_update->gimbal_pitch_motor.absolute_angle)-0.2759)*1.3492;
+	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.roll =0.0f;
+    auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.pitch =pitch_angle;
+	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.yaw =feedback_update->gimbal_yaw_motor.absolute_angle;		
+   auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.blank = 0;       
+   auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_TAIL = 0x0d;
+    shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
+	shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
     if (feedback_update == NULL)
     {
         return;
     }
+    
+    // Check if INS data pointers are valid
+    if (feedback_update->gimbal_INT_angle_point == NULL || 
+        feedback_update->gimbal_INT_gyro_point == NULL)
+    {
+        return;  // Skip update if INS data not ready
+    }
+    
+    // Check if motor measure pointers are valid
+    if (feedback_update->gimbal_pitch_motor.gimbal_motor_measure == NULL ||
+        feedback_update->gimbal_yaw_motor.gimbal_motor_measure == NULL)
+    {
+        return;  // Skip update if motor data not ready
+    }
+    
     //云台数据更新
 	//pitch绝对角度 = 初始化时的角度加上INS_PITCH_ADDRESS_OFFSET
     feedback_update->gimbal_pitch_motor.absolute_angle = *(feedback_update->gimbal_INT_angle_point + INS_PITCH_ADDRESS_OFFSET);
 
+    
 #if PITCH_TURN
     feedback_update->gimbal_pitch_motor.relative_angle = -motor_ecd_to_angle_change(feedback_update->gimbal_pitch_motor.gimbal_motor_measure->ecd,
                                                                                           feedback_update->gimbal_pitch_motor.offset_ecd);
@@ -769,28 +826,7 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
                			   - arm_sin_f32(feedback_update->gimbal_pitch_motor.absolute_angle) * (*(feedback_update->gimbal_INT_gyro_point + INS_GYRO_X_ADDRESS_OFFSET));						   
 					 
 	//自瞄数据更新
-//	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_HEADER = 0xff;
-//	if(0<aim_color_id<10)
-//	    {
-//			color=1;
-//		}
-//    else
-//		{	
-//            color=0;
-//		}
-	//判断是否进入自瞄
-//	if(feedback_update->gimbal_pitch_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO && feedback_update->gimbal_yaw_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO) 	
-//	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =1;
-//	else auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =1;
-	/***************************************************************************************************************/
-	//float pitch_angle = ((-feedback_update->gimbal_pitch_motor.absolute_angle)-0.2759)*1.3492;
 	
-	
-//	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.roll =0.0f;
-//	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.pitch =pitch_angle;
-//	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.yaw =feedback_update->gimbal_yaw_motor.absolute_angle;		
-//    auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.blank = 0;       
-//    auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_TAIL = 0x0d;	
 // 	
 //	
 
@@ -975,14 +1011,24 @@ static void gimbal_auto_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add)  //�
             add = gimbal_motor->max_relative_angle - gimbal_motor->relative_angle - bias_angle;
         }
     }
+    // Check if the target angle would exceed the minimum limit
+    // 检查目标角度是否会超出最小限位
     else if (gimbal_motor->relative_angle + bias_angle + add < gimbal_motor->min_relative_angle)
     {
+        // If the angle increment is negative (moving downward/leftward)
+        // 如果角度增量为负（向下/向左移动）
         if (add < 0.0f)
         {
+            // Clamp the increment to prevent exceeding the minimum angle limit
+            // 限制增量以防止超出最小角度限位
             add = gimbal_motor->min_relative_angle - gimbal_motor->relative_angle - bias_angle;
         }
     }
+    // Store current absolute angle setpoint
+    // 保存当前绝对角度设定值
     angle_set = gimbal_motor->absolute_angle_set;
+    // Update the absolute angle setpoint with the clamped increment and normalize to [-π, π]
+    // 使用限位后的增量更新绝对角度设定值，并归一化到 [-π, π] 范围
     gimbal_motor->absolute_angle_set = rad_format(angle_set + add);
 }
 

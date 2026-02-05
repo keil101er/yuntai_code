@@ -211,7 +211,7 @@ static void shoot_feedback_update(void)
 static void shoot_set_mode(void)
 {
 //    static int8_t last_s = RC_SW_UP;
-	//
+	
 	if (shoot_control.shoot_flag ==0)
 {
         shoot_control.fric_l_current = 0;

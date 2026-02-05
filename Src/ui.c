@@ -146,7 +146,7 @@ while(1)
 	memcpy(shoot_data,&shoot_speed,4);
 		 
 	//发送弹速函数
-	HAL_UART_Transmit(&huart1,shoot_data,4,100);
+	//HAL_UART_Transmit(&huart1,shoot_data,4,100);
 	//超级电容等级控制
 		{	
 			if (robot_state.robot_level == 1 &&PowerData[3]!=50 )

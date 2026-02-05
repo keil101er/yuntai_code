@@ -1,0 +1,45 @@
+{
+  "env": {
+    "KEIL_PATH": "C:\\Keil_v5",
+    "PROJECT_ROOT": "D:\\RM_code\\code_rmuc (4)\\code_rmuc\\yuntai _send"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "LS",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch",
+      "Bash(wc:*)",
+      "Bash(__NEW_LINE__ echo \"=== 验证关键更新 ===\")",
+      "Bash(__NEW_LINE__ echo \"1. 检查板间通信章节（应该包含''实际使用的跟随机制''）：\")",
+      "Bash(__NEW_LINE__ sed -n '354,360p' CLAUDE.md)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n2. 检查底盘跟随问题章节（应该是''基于电机编码器''）：\")",
+      "Bash(__NEW_LINE__ sed -n '689,692p' CLAUDE.md)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n3. 检查附录标题（应该标注''备用通信协议''）：\")",
+      "Bash(__NEW_LINE__ sed -n '786,789p' CLAUDE.md)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== 验证完成 ===\")"
+    ],
+    "deny": [],
+    "ask": [
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "Create",
+      "Update"
+    ],
+    "additionalDirectories": [
+      "D:\\RM_code\\code_rmuc\\chassis\\1.12VMC\\1.12"
+    ]
+  },
+  "companyAnnouncements": []
+}

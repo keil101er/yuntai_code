@@ -151,40 +151,40 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-    osThreadDef(cali, calibrate_task, osPriorityNormal, 0, 512);//Ğ£×¼
+    osThreadDef(cali, calibrate_task, osPriorityNormal, 0, 512);//æ ¡å‡†
     calibrate_tast_handle = osThreadCreate(osThread(cali), NULL);
 
-//    osThreadDef(ChassisTask, chassis_task, osPriorityAboveNormal, 0, 512);//µ×ÅÌ
+//    osThreadDef(ChassisTask, chassis_task, osPriorityAboveNormal, 0, 512);//åº•ç›˜
 //    chassisTaskHandle = osThreadCreate(osThread(ChassisTask), NULL);
 
-//    osThreadDef(DETECT, detect_task, osPriorityNormal, 0, 256);//²ÃÅĞÏµÍ³Éè±¸ÀëÏß
+//    osThreadDef(DETECT, detect_task, osPriorityNormal, 0, 256);//è£åˆ¤ç³»ç»Ÿè®¾å¤‡ç¦»çº¿
 //    detect_handle = osThreadCreate(osThread(DETECT), NULL);
 
-    osThreadDef(gimbalTask, gimbal_task, osPriorityHigh, 0, 1024);//ÔÆÌ¨
+    osThreadDef(gimbalTask, gimbal_task, osPriorityHigh, 0, 1024);//äº‘å°
     gimbalTaskHandle = osThreadCreate(osThread(gimbalTask), NULL);
 
-    osThreadDef(imuTask, INS_task, osPriorityRealtime, 0, 1024);//×ËÌ¬ÑİËã
+    osThreadDef(imuTask, INS_task, osPriorityRealtime, 0, 1024);//å§¿æ€æ¼”ç®—
     imuTaskHandle = osThreadCreate(osThread(imuTask), NULL);
 
-    osThreadDef(led, led_RGB_flow_task, osPriorityNormal, 0, 256);//RGB¼ì²â
+    osThreadDef(led, led_RGB_flow_task, osPriorityNormal, 0, 256);//RGBæ£€æµ‹
     led_RGB_flow_handle = osThreadCreate(osThread(led), NULL);
 
-//osThreadDef(OLED, oled_task, osPriorityLow, 0, 256);//¹Ù·½OLED
+//osThreadDef(OLED, oled_task, osPriorityLow, 0, 256);//å®˜æ–¹OLED
 //oled_handle = osThreadCreate(osThread(OLED), NULL);
 
-    osThreadDef(REFEREE, referee_usart_task, osPriorityNormal, 0, 128);//RM²ÃÅĞÏµÍ³Êı¾İ´¦Àí
+    osThreadDef(REFEREE, referee_usart_task, osPriorityNormal, 0, 128);//RMè£åˆ¤ç³»ç»Ÿæ•°æ®å¤„ç†
     referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);
 
-    osThreadDef(USBTask, usb_task, osPriorityNormal, 0, 128);//usbÊä³ö´íÎóĞÅÏ¢
+    osThreadDef(USBTask, usb_task, osPriorityNormal, 0, 128);//usbè¾“å‡ºé”™è¯¯ä¿¡æ¯
     usb_task_handle = osThreadCreate(osThread(USBTask), NULL);
 
-    osThreadDef(BATTERY_VOLTAGE, battery_voltage_task, osPriorityNormal, 0, 128);//µçÔ´²ÉÑùºÍ¼ÆËãµçÔ´°Ù·Ö±È
+    osThreadDef(BATTERY_VOLTAGE, battery_voltage_task, osPriorityNormal, 0, 128);//ç”µæºé‡‡æ ·å’Œè®¡ç®—ç”µæºç™¾åˆ†æ¯”
     battery_voltage_handle = osThreadCreate(osThread(BATTERY_VOLTAGE), NULL);
 
-//    osThreadDef(SERVO, servo_task, osPriorityNormal, 0, 128);//¶æ»úÈÎÎñ
+//    osThreadDef(SERVO, servo_task, osPriorityNormal, 0, 128);//èˆµæœºä»»åŠ¡
 //    servo_task_handle = osThreadCreate(osThread(SERVO), NULL);
 
-    osThreadDef(UI , user_task , osPriorityNormal, 0, 128);//UI½çÃæ
+    osThreadDef(UI , user_task , osPriorityNormal, 0, 128);//UIç•Œé¢
     user_task_handle = osThreadCreate(osThread(UI), NULL);
 
   /* USER CODE END RTOS_THREADS */
@@ -215,5 +215,3 @@ __weak void test_task(void const * argument)
 /* USER CODE BEGIN Application */
      
 /* USER CODE END Application */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

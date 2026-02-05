@@ -78,6 +78,6 @@ GAME_DATE_t GAME_DATE;
 extern void  AUTO_control_init(void);
 extern CTRL *get_AUTO_control_point(void);
 extern void memory_from_buffer(uint8_t *buffer, CTRL *ctrl);
-
+extern void USART1_IDLE_Handler(void);
 #endif
 

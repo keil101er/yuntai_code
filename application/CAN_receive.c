@@ -143,14 +143,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 			break;
 		}					
 						
-        case CAN_YAW_MOTOR_ID:   //yaw6020 	CAN_YAW_MOTOR_ID = 0x205,
-	  {
-//            static uint8_t i = 0;
-
-//            i = rx_header.StdId - CAN_3508_M1_ID;
-//            get_motor_measure(&motor_chassis[i], rx_data);  //motor_chassis[4]
-//		  
-		  
+        case CAN_YAW_MOTOR_ID:   //yaw6020 	CAN_YAW_MOTOR_ID = 0x09,
+	  {	  
 		   dm4310_fbdata1(&yaw_motor[1], rx_data,8);
 		   if(yaw_motor[1].para.pos>=6.25&&yaw_motor[1].para.pos<=12.5)
                yaw_motor[1].para.pos-=6.25;
@@ -162,20 +156,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		       motor_chassis[4].last_ecd=motor_chassis[4].ecd;
                motor_chassis[4].ecd=yaw_motor[1].para.pos*8192/6.25;
 
-          //  detect_hook(CHASSIS_MOTOR1_TOE + i);            //
             break;
         }
-			
-//		  case CAN_SUPERCAP_ID:
-//			{
-//				
-//				uint16_t* pPowerdata  = (uint16_t *) rx_data;//CAN收到的8个字节的数组
-//				PowerData[0] = (float)pPowerdata[0] / 100.f;//输入电压
-//				PowerData[1] = (float)pPowerdata[1] / 100.f;//电容电压
-//				PowerData[2] = (float)pPowerdata[2] / 100.f;//输入电流
-//				PowerData[3] = (float)pPowerdata[3] / 100.f;//设定功率
-//				break;
-//			}
+
 		case CAN_TRIGGER_MOTOR_ID:   //拨弹盘    CAN_TRIGGER_MOTOR_ID = 0x207,
 		{
 			get_motor_measure(&motor_chassis[6], rx_data);
@@ -195,20 +178,25 @@ else if (hcan==&hcan2){
 	{ 
 		case CAN_PITCH_MOTOR_ID:
         {
-            get_motor_measure(&motor_chassis[5], rx_data);
-			motor_chassis[5].speed_rpm=(motor_chassis[5].speed_rpm);
-			i = motor_chassis[5].ecd;
+          get_motor_measure(&motor_chassis[5], rx_data);
+			    motor_chassis[5].speed_rpm=(motor_chassis[5].speed_rpm);
+		  	  i = motor_chassis[5].ecd;
             //detect_hook(PITCH_GIMBAL_MOTOR_TOE);
-			break;
+			    break;
         }
 	//摩擦轮
-	    case CAN_FRIC_L_ID:			//CAN_FRIC_L_ID = 0x201,  //motor_chassis[7]
-        case CAN_FRIC_R_ID:		    //CAN_FRIC_R_ID = 0x202,	//motor_chassis[8]
+  	//CAN_FRIC_L_ID = 0x206,  //motor_chassis[8]
+	    case CAN_FRIC_L_ID:
+      {
+         get_motor_measure(&motor_chassis[8], rx_data);  
+         break;
+      }
+
+
+    //CAN_FRIC_R_ID = 0x205,	//motor_chassis[7]
+      case CAN_FRIC_R_ID:		    
 	  {
-		  
-        static uint8_t j = 0;
-        j = rx_header.StdId - 0x200;
-        get_motor_measure(&motor_chassis[j], rx_data);  
+        get_motor_measure(&motor_chassis[7], rx_data);  
        // detect_hook(CAN_FRIC_L_ID + j - 7);
         break;
 	 
@@ -584,11 +572,11 @@ const motor_measure_t *get_trigger_motor_measure_point(void)
   */
 const motor_measure_t *get_fricL_motor_measure_point(void)
 {
-    return &motor_chassis[5];
+    return &motor_chassis[8];
 }
 const motor_measure_t *get_fricR_motor_measure_point(void)
 {
-    return &motor_chassis[6];
+    return &motor_chassis[7];
 }
 
 

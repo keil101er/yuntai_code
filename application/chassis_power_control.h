@@ -1,13 +1,13 @@
 /**
   ****************************(C) COPYRIGHT 2019 DJI****************************
   * @file       chassis_power_control.c/h
-  * @brief      chassis power control.µ×ÅÌ¹¦ÂÊ¿ØÖÆ
+  * @brief      chassis power control.åº•ç›˜åŠŸç‡æ§åˆ¶
   * @note       this is only controling 80 w power, mainly limit motor current set.
   *             if power limit is 40w, reduce the value JUDGE_TOTAL_CURRENT_LIMIT 
   *             and POWER_CURRENT_LIMIT, and chassis max speed (include max_vx_speed, min_vx_speed)
-  *             Ö»¿ØÖÆ80w¹¦ÂÊ£¬Ö÷ÒªÍ¨¹ı¿ØÖÆµç»úµçÁ÷Éè¶¨Öµ,Èç¹ûÏŞÖÆ¹¦ÂÊÊÇ40w£¬¼õÉÙ
-  *             JUDGE_TOTAL_CURRENT_LIMITºÍPOWER_CURRENT_LIMITµÄÖµ£¬»¹ÓĞµ×ÅÌ×î´óËÙ¶È
-  *             (°üÀ¨max_vx_speed, min_vx_speed)
+  *             åªæ§åˆ¶80wåŠŸç‡ï¼Œä¸»è¦é€šè¿‡æ§åˆ¶ç”µæœºç”µæµè®¾å®šå€¼,å¦‚æœé™åˆ¶åŠŸç‡æ˜¯40wï¼Œå‡å°‘
+  *             JUDGE_TOTAL_CURRENT_LIMITå’ŒPOWER_CURRENT_LIMITçš„å€¼ï¼Œè¿˜æœ‰åº•ç›˜æœ€å¤§é€Ÿåº¦
+  *             (åŒ…æ‹¬max_vx_speed, min_vx_speed)
   * @history
   *  Version    Date            Author          Modification
   *  V1.1.0     Nov-11-2019     RM              1. add chassis power control
@@ -30,8 +30,8 @@
   * @retval         none
   */
 /**
-  * @brief          ÏŞÖÆ¹¦ÂÊ£¬Ö÷ÒªÏŞÖÆµç»úµçÁ÷
-  * @param[in]      chassis_power_control: µ×ÅÌÊı¾İ
+  * @brief          é™åˆ¶åŠŸç‡ï¼Œä¸»è¦é™åˆ¶ç”µæœºç”µæµ
+  * @param[in]      chassis_power_control: åº•ç›˜æ•°æ®
   * @retval         none
   */
 extern void chassis_power_control(chassis_move_t *chassis_power_control);
