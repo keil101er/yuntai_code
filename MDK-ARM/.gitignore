@@ -13,3 +13,23 @@
 # eide template
 *.ept
 *.eide-template
+*.svd
+
+# Keil & Pack files
+.pack/
+RTE_Components.h
+
+# Log files
+.vscode/*.log
+.vscode/*.log.lock
+
+# Object and temp files
+*.o
+*.d
+*.crf
+*.lst
+*.map
+*.dep
+
+# Agent temp files
+tmpclaude-*

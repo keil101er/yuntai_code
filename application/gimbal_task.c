@@ -256,14 +256,13 @@ void gimbal_task(void const *pvParameters)
     shoot_init();    
 	
 	//自瞄初始化
-
+    AUTO_control_init();
     //wait for all motor online
     //判断电机是否都上线
-//    while (toe_is _error(YAW_GIMBAL_MOTOR_TOE) || toe_is_error(PITCH_GIMBAL_MOTOR_TOE))
-//    {
-//        vTaskDelay(GIMBAL_CONTROL_TIME);
-//        gimbal_feedback_update(&gimbal_control);             //云台数据反馈
-//    }
+   while (toe_is_error(YAW_GIMBAL_MOTOR_TOE) || toe_is_error(PITCH_GIMBAL_MOTOR_TOE))
+   {
+       vTaskDelay(GIMBAL_CONTROL_TIME);
+   }
   
     while (1)
     {   
@@ -756,6 +755,10 @@ static void gimbal_set_mode(gimbal_control_t *set_mode,c_fbpara_t *motor)
 int color;
 static void gimbal_feedback_update(gimbal_control_t *feedback_update)
 {
+    if (feedback_update == NULL)
+    {
+        return;
+    }
     auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_HEADER = 0xff;
 	if(0<aim_color_id<10)
 	    {
@@ -767,8 +770,13 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
 		}
 	//判断是否进入自瞄
 	if(feedback_update->gimbal_pitch_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO && feedback_update->gimbal_yaw_motor.gimbal_motor_mode==GIMBAL_MOTOR_AUTO) 	
-	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =1;
-	else auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =0;
+	{
+        auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =1;
+    }
+	else 
+    {
+        auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.mode =0;
+    }
 	/***************************************************************************************************************/
     float pitch_angle = ((-feedback_update->gimbal_pitch_motor.absolute_angle)-0.2759)*1.3492;
 	auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.roll =0.0f;
@@ -778,10 +786,6 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
    auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_TAIL = 0x0d;
     shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
 	shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
-    if (feedback_update == NULL)
-    {
-        return;
-    }
     
     // Check if INS data pointers are valid
     if (feedback_update->gimbal_INT_angle_point == NULL || 
