@@ -144,7 +144,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		}					
 						
         case CAN_YAW_MOTOR_ID:   //yaw6020 	CAN_YAW_MOTOR_ID = 0x09,
-	  {	  
+	  {
 		   dm4310_fbdata1(&yaw_motor[1], rx_data,8);
 		   if(yaw_motor[1].para.pos>=6.25&&yaw_motor[1].para.pos<=12.5)
                yaw_motor[1].para.pos-=6.25;
@@ -598,7 +598,22 @@ const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
   * @brief          上板数据发送函数  ID为 0x15
   * @retval          none
   */
-void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,float UP_INS_YAW)
+// void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,float UP_INS_YAW)
+// {
+//     uint32_t send_mail_box;
+//     chassis_tx_message.StdId = 0x15;
+//     chassis_tx_message.IDE = CAN_ID_STD;
+//     chassis_tx_message.RTR = CAN_RTR_DATA;
+//     chassis_tx_message.DLC = 0x08;
+	
+// 	int16_t YAW_NAW = (int16_t)((UP_INS_YAW / FLOAT_MAX_INS_YAW) * 32767);
+// 	chassis_can_send_data[0] = (YAW_NAW >> 8) & 0xFF;  // 高字节
+// 	chassis_can_send_data[1] = (YAW_NAW ) & 0xFF;      // 低字节  
+// 	HAL_CAN_AddTxMessage(hcan, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
+	
+// }
+//拨弹盘控制函数
+void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,uint8_t trigger_mode)
 {
     uint32_t send_mail_box;
     chassis_tx_message.StdId = 0x15;
@@ -606,9 +621,8 @@ void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,float UP_INS_YAW)
     chassis_tx_message.RTR = CAN_RTR_DATA;
     chassis_tx_message.DLC = 0x08;
 	
-	int16_t YAW_NAW = (int16_t)((UP_INS_YAW / FLOAT_MAX_INS_YAW) * 32767);
-	chassis_can_send_data[0] = (YAW_NAW >> 8) & 0xFF;  // 高字节
-	chassis_can_send_data[1] = (YAW_NAW ) & 0xFF;      // 低字节  
+	
+	chassis_can_send_data[0] =trigger_mode;
 	HAL_CAN_AddTxMessage(hcan, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
 	
 }

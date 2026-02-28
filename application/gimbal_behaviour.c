@@ -332,6 +332,7 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set,c_fbpara_t *cha
 }
 
 extern chassis_behaviour_e chassis_behaviour_mode;
+//自瞄模式下对yaw和pitch的控制
 static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal_control_set,c_fbpara_t  *chassis_transmit)
 {
 //	yaw_value = gimbal_control_set->gimbal_yaw_motor.absolute_angle;
@@ -347,7 +348,7 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 		
 //    rc_deadband_limit(chassis_transmit->yaw_ch, yaw_channel, RC_DEADBAND);
 //    rc_deadband_limit(chassis_transmit->pitch_ch, pitch_channel, RC_DEADBAND);
-		//比较上次自瞄数据与这次自瞄数据的差别
+//比较上次自瞄数据与这次自瞄数据是否有差别
 		if(gimbal_control_set->gimbal_yaw_motor.last_auto_data !=gimbal_control_set->gimbal_AUTO_ctrl->x|| gimbal_control_set->gimbal_pitch_motor.last_auto_data !=gimbal_control_set->gimbal_AUTO_ctrl->y)
     {
 //			// 阶梯性处理yaw数据
@@ -368,21 +369,21 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 		//小陀螺模式下的赋值
 		if(chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
 		{
-		  *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN+(double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
-          *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
+		  *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN + (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
+      *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
 		}
 		//底盘跟随云台下的赋值
 		else
 		{
-		   *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN+(double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
-           *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
+		  *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN+(double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
+      *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
 		}	
 	}
  		}
 	else 
 		{	
-       *yaw = chassis_transmit->receive_yaw_ch;
-    *pitch = chassis_transmit->receive_pitch_ch;
+      *yaw = chassis_transmit->receive_yaw_ch;
+      *pitch = chassis_transmit->receive_pitch_ch;
 		}
 		gimbal_control_set->gimbal_yaw_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->x;
 		gimbal_control_set->gimbal_pitch_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->y;
@@ -591,6 +592,10 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set,c_fbpara_t *ch
 //  gimbal_behaviour =  GIMBAL_RELATIVE_ANGLE;
 
 	}
+  else if(chassis_transmit->mode_flag == 2)
+	{
+		gimbal_behaviour = GIMBAL_AUTO;
+	}
 	
 //    else if (switch_is_up(chassis_transmit->mode_flag))  //拨杆最上面云台则为自瞄模式
 //    {
@@ -736,7 +741,7 @@ static void gimbal_cali_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal
   * @param[in]      gimbal_control_set:云台数据指针
   * @retval         none
   */
-
+//手动控制下对yaw和pitch的控制
 static void gimbal_absolute_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal_control_set,c_fbpara_t  *chassis_transmit)
 {
     if (yaw == NULL || pitch == NULL || gimbal_control_set == NULL)

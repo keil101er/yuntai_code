@@ -133,7 +133,8 @@ extern const motor_measure_t *get_fricL_motor_measure_point(void);
 
 extern const motor_measure_t *get_fricR_motor_measure_point(void);
 
-extern void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,float UP_INS_YAW);
+// extern void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,float UP_INS_YAW);
+extern void CAN_gimbal_send__to_chassis(CAN_HandleTypeDef *hcan,uint8_t trigger_mode);
 
 extern const motor_measure_t *get_chassis_motor_measure_point(uint8_t i);
 
