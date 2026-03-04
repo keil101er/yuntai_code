@@ -93,7 +93,7 @@
 //当云台在校准, 设置蜂鸣器频率和强度
 #define gimbal_warn_buzzer_on() buzzer_on(31, 20000)
 #define gimbal_warn_buzzer_off() buzzer_off()
-
+uint8_t auto_flag=0;
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,
@@ -357,33 +357,40 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 //			
 		
 		
-	// 如果没有识别到目标，停止云台运动
-    if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
+	// 如果没有识别到目标，关闭自瞄控制
+    // if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
+    if(gimbal_control_set->gimbal_AUTO_ctrl->distance==-1)
     {
-        *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN;
-        *pitch = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN);
-
-    }
-	else
-	{
+      auto_flag=0;
+      *yaw = -chassis_transmit->receive_yaw_ch*4;
+      *pitch = - chassis_transmit->receive_pitch_ch*3;
+    } 
+	  else
+	  {
+      auto_flag=1;
 		//小陀螺模式下的赋值
-		if(chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
-		{
-		  *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN + (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
-      *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
-		}
-		//底盘跟随云台下的赋值
-		else
-		{
-		  *yaw = yaw_channel * YAW_RC_SEN - gimbal_control_set->gimbal_rc_ctrl->mouse.x * YAW_MOUSE_SEN+(double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
-      *pitch  = (pitch_channel * PITCH_RC_SEN + gimbal_control_set->gimbal_rc_ctrl->mouse.y * PITCH_MOUSE_SEN) +(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
-		}	
-	}
+		  if(chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
+		  {
+		    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
+        // *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
+        *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
+        *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//
+		  }
+		  //底盘跟随云台下的赋值
+		  else
+		  {
+		    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
+        // *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
+		    *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
+        *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//        
+		  }	
+	  }
  		}
 	else 
-		{	
-      *yaw = chassis_transmit->receive_yaw_ch;
-      *pitch = chassis_transmit->receive_pitch_ch;
+		{
+      auto_flag=0;
+      *yaw = -chassis_transmit->receive_yaw_ch*4;
+      *pitch = - chassis_transmit->receive_pitch_ch*3;
 		}
 		gimbal_control_set->gimbal_yaw_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->x;
 		gimbal_control_set->gimbal_pitch_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->y;
@@ -578,6 +585,10 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set,c_fbpara_t *ch
 //    }
     //开关控制 云台状态  **********************************chassis_transmit->mode_flag 下板对上板进行模式切换*******************************************
 	/*****************************************************************************************************************/
+
+
+
+
     if(chassis_transmit->mode_flag == 0) //如果拨杆处在最下面
     {
         gimbal_behaviour = GIMBAL_ZERO_FORCE;    //云台无力模式
@@ -596,7 +607,13 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set,c_fbpara_t *ch
 	{
 		gimbal_behaviour = GIMBAL_AUTO;
 	}
-	
+	// gimbal_behaviour = GIMBAL_AUTO;
+
+
+
+
+
+
 //    else if (switch_is_up(chassis_transmit->mode_flag))  //拨杆最上面云台则为自瞄模式
 //    {
 ////				if(	gimbal_mode_set->gimbal_rc_ctrl->mouse.press_r)
