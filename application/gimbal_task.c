@@ -1100,13 +1100,13 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     }
     CTRL *ctrl = get_AUTO_control_point();
 
-    if (gimbal_motor->absolute_angle_set > 0.5)
+    if (gimbal_motor->absolute_angle_set > 0.3f)
     {
-        gimbal_motor->absolute_angle_set = 0.5;
+        gimbal_motor->absolute_angle_set = 0.3f;
     }
-    else if (gimbal_motor->absolute_angle_set < -0.3)
+    else if (gimbal_motor->absolute_angle_set < -0.45f)
     {
-        gimbal_motor->absolute_angle_set = -0.3;
+        gimbal_motor->absolute_angle_set = -0.45f;
     }
 
     // 计算当前角度与目标角度的差值

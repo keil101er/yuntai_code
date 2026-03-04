@@ -94,6 +94,7 @@
 #define gimbal_warn_buzzer_on() buzzer_on(31, 20000)
 #define gimbal_warn_buzzer_off() buzzer_off()
 uint8_t auto_flag=0;
+uint8_t auto_cnt=0;
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,
@@ -349,16 +350,29 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 //    rc_deadband_limit(chassis_transmit->yaw_ch, yaw_channel, RC_DEADBAND);
 //    rc_deadband_limit(chassis_transmit->pitch_ch, pitch_channel, RC_DEADBAND);
 //比较上次自瞄数据与这次自瞄数据是否有差别
-		if(gimbal_control_set->gimbal_yaw_motor.last_auto_data !=gimbal_control_set->gimbal_AUTO_ctrl->x|| gimbal_control_set->gimbal_pitch_motor.last_auto_data !=gimbal_control_set->gimbal_AUTO_ctrl->y)
+		if(((gimbal_control_set->gimbal_yaw_motor.last_auto_data) == (gimbal_control_set->gimbal_AUTO_ctrl->x)) && ((gimbal_control_set->gimbal_pitch_motor.last_auto_data) == (gimbal_control_set->gimbal_AUTO_ctrl->y)))
     {
+      auto_cnt++;
+    }
+    else
+    {
+      auto_cnt=0;
+    }
 //			// 阶梯性处理yaw数据
 //			gimbal_control_set->gimbal_AUTO_ctrl->y = fabs(gimbal_control_set->gimbal_AUTO_ctrl->y) >3.0f ?gimbal_control_set->gimbal_AUTO_ctrl->y:gimbal_control_set->gimbal_AUTO_ctrl->y/1.2f;
 //			if(fabs(gimbal_control_set->gimbal_AUTO_ctrl->y)<1.0f) gimbal_control_set->gimbal_AUTO_ctrl->y =0; 
-//			
-		
-		
+	//如果接收相同自瞄数据超过一定次数，就切回手动控制
+	if(auto_cnt>10)
+  {
+    auto_cnt=11;
+    auto_flag=0;
+    *yaw = -chassis_transmit->receive_yaw_ch*4;
+    *pitch = - chassis_transmit->receive_pitch_ch*3;
+  }
+  else
+  {
 	// 如果没有识别到目标，关闭自瞄控制
-    // if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
+  // if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
     if(gimbal_control_set->gimbal_AUTO_ctrl->distance==-1)
     {
       auto_flag=0;
@@ -385,17 +399,11 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
         *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//        
 		  }	
 	  }
- 		}
-	else 
-		{
-      auto_flag=0;
-      *yaw = -chassis_transmit->receive_yaw_ch*4;
-      *pitch = - chassis_transmit->receive_pitch_ch*3;
-		}
+  }
 		gimbal_control_set->gimbal_yaw_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->x;
 		gimbal_control_set->gimbal_pitch_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->y;
-		gimbal_control_set->gimbal_AUTO_ctrl->x = 0.0f;
-		gimbal_control_set->gimbal_AUTO_ctrl->y = 0.0f;		
+		// gimbal_control_set->gimbal_AUTO_ctrl->x = 0.0f;
+		// gimbal_control_set->gimbal_AUTO_ctrl->y = 0.0f;		
 		yaw_value = gimbal_control_set->gimbal_yaw_motor.absolute_angle;
 	    pitch_value = gimbal_control_set->gimbal_pitch_motor.absolute_angle;
 //	    send_gimbal_angles(1,0.0f,pitch_value,yaw_value);
