@@ -55,6 +55,7 @@ float aim_speed;
 fp32 add_yaw_angle = 0.0f;
 fp32 add_pitch_angle = 0.0f;
 extern uint8_t auto_flag;
+extern uint8_t last_auto_flag;
 // motor enconde value format, range[0-8191]
 // 电机编码值规整 0—8191
 #define ecd_format(ecd)         \
@@ -995,6 +996,10 @@ static void gimbal_auto_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add) // �
     // angle_set = gimbal_motor->absolute_angle_set;
     // Update the absolute angle setpoint with the clamped increment and normalize to [-π, π]
     // 使用限位后的增量更新绝对角度设定值，并归一化到 [-π, π] 范围
+    if(last_auto_flag==1&&auto_flag==0)
+    {
+        gimbal_motor->absolute_angle_set=gimbal_motor->absolute_angle;
+    }
     if(auto_flag)
     {
         gimbal_motor->absolute_angle_set = rad_format(gimbal_motor->absolute_angle + add);
@@ -1089,7 +1094,7 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
     }
     // 控制值赋值
     // gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
-    gimbal_motor->given_current_yaw = (int16_t)(gimbal_motor->current_set);                                                       
+    gimbal_motor->given_current_yaw =(gimbal_motor->current_set);                                                       
 }
 
 static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)

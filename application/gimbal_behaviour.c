@@ -94,6 +94,7 @@
 #define gimbal_warn_buzzer_on() buzzer_on(31, 20000)
 #define gimbal_warn_buzzer_off() buzzer_off()
 uint8_t auto_flag=0;
+uint8_t last_auto_flag=0; 
 uint8_t auto_cnt=0;
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
@@ -345,7 +346,7 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
         return;
     }
 		static int16_t yaw_channel = 0, pitch_channel = 0;
-    
+    last_auto_flag=auto_flag;
 		
 //    rc_deadband_limit(chassis_transmit->yaw_ch, yaw_channel, RC_DEADBAND);
 //    rc_deadband_limit(chassis_transmit->pitch_ch, pitch_channel, RC_DEADBAND);
@@ -378,7 +379,7 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
       auto_flag=0;
       *yaw = -chassis_transmit->receive_yaw_ch*4;
       *pitch = - chassis_transmit->receive_pitch_ch*3;
-    } 
+    }
 	  else
 	  {
       auto_flag=1;
