@@ -46,12 +46,16 @@
 
 //yaw speed close-loop PID params, max out and max iout
 //yaw 速度环 PID参数以及 PID最大输出，积分输出
+// #define YAW_SPEED_PID_KP        0.45f
+// #define YAW_SPEED_PID_KI        0.00f
+// #define YAW_SPEED_PID_KD        0.00f
+// #define YAW_SPEED_PID_MAX_OUT   4.0f
+// #define YAW_SPEED_PID_MAX_IOUT  1.0f   
 #define YAW_SPEED_PID_KP        0.45f
 #define YAW_SPEED_PID_KI        0.00f
 #define YAW_SPEED_PID_KD        0.00f
 #define YAW_SPEED_PID_MAX_OUT   4.0f
-#define YAW_SPEED_PID_MAX_IOUT  1.0f   
-
+#define YAW_SPEED_PID_MAX_IOUT  1.0f  
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
 #define YAW_GYRO_ABSOLUTE_PID_KP         18.00f//15
@@ -107,9 +111,11 @@
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
 // #define YAW_AUTO_LOW_ABSOLUTE_PID_KP       28.0f//60
-#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       15.0f//60
+#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       20.0f//60
+// #define YAW_AUTO_LOW_ABSOLUTE_PID_KP       15.0f//60
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KI       0.0f
-#define YAW_AUTO_LOW_ABSOLUTE_PID_KD       -1.0f
+// #define YAW_AUTO_LOW_ABSOLUTE_PID_KD       -1.0f
+#define YAW_AUTO_LOW_ABSOLUTE_PID_KD       0.0f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_MAX_OUT   10.0f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_MAX_IOUT  0.0f
 
@@ -132,7 +138,7 @@
 
 
 
-//任务初始化 空闲一段时间
+// 任务初始化 空闲一段时间
 #define GIMBAL_TASK_INIT_TIME 201
 //yaw,pitch控制通道以及状态开关通道
 #define YAW_CHANNEL   2

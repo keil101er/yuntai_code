@@ -1080,18 +1080,18 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
         return;
     }
     CTRL *ctrl = get_AUTO_control_point();
-    // 在开启小陀螺时的较硬自瞄
-    if (chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
-    {
-        gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_auto_angle_pid, gimbal_motor->absolute_angle, gimbal_motor->absolute_angle_set, gimbal_motor->motor_gyro);
-        gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
-    }
+    // // 在开启小陀螺时的较硬自瞄
+    // if (chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
+    // {
+    //     gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_auto_angle_pid, gimbal_motor->absolute_angle, gimbal_motor->absolute_angle_set, gimbal_motor->motor_gyro);
+    //     gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
+    // }
     // 底盘跟随下的自瞄pid
-    else
-    {
+    // else
+    // {
         gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_low_auto_angle_pid, gimbal_motor->absolute_angle, gimbal_motor->absolute_angle_set, gimbal_motor->motor_gyro);
         gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
-    }
+    // }
     // 控制值赋值
     // gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
     gimbal_motor->given_current_yaw =(gimbal_motor->current_set);                                                       
@@ -1099,6 +1099,7 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
 
 static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
+     float min_speed = 5.0f; // 实测能克服静摩擦的最小速度
     if (gimbal_motor == NULL)
     {
         return;
@@ -1115,8 +1116,10 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     }
 
     // 计算当前角度与目标角度的差值
-    angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
-    // angle_error = gimbal_motor->absolute_angle_set - (gimbal_motor->absolute_angle);
+    // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
+    // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756);
+    angle_error = gimbal_motor->absolute_angle_set - (gimbal_motor->absolute_angle);
+
     // 设置最大速度
     float max_speed = 30.0f;
 
@@ -1128,12 +1131,17 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     {
         aim_speed = max_speed;
     }
-    else if (aim_speed < 0)
+   
+    if (aim_speed < min_speed && fabs(angle_error) > 0.01f)
     {
-        aim_speed = 0;
+        aim_speed = min_speed;
     }
+    // else if (aim_speed < 0)
+    // {
+    //     aim_speed = 0;
+    // }
     //CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, aim_speed + 19);
-    CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, aim_speed);
+    CAN_cmd_4310pitch_pvmode(rad_format(gimbal_motor->absolute_angle_set+0.04), aim_speed);
 }
 
 /**
