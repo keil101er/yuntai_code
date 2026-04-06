@@ -223,7 +223,8 @@ extern c_fbpara_t receive_chassis_data;
 extern motor_measure_t motor_chassis[9];
 
 extern shoot_control_t shoot_control; // 射击数据
-
+float last_yaw_angle;
+float yaw_angle_change;
 void gimbal_task(void const *pvParameters)
 {
     // 等待陀螺仪任务更新陀螺仪数据
@@ -351,6 +352,8 @@ void gimbal_task(void const *pvParameters)
             // Shoot flag is 0: Stop friction wheels
             else if (receive_chassis_data.reserve1 == 0)
             {
+                if(fabs(shoot_control.fricL_speed)<1.0f || fabs(shoot_control.fricR_speed)<1.0f)
+                {
                 // 将电流设为 0，停止摩擦轮电机
                 // Set current to 0, stop friction wheel motors
                 shoot_control.fric_l_current = 0;
@@ -359,6 +362,32 @@ void gimbal_task(void const *pvParameters)
                 // 发送停止指令到摩擦轮电机
                 // Send stop command to friction wheel motors
                 CAN_cmd_fric(0, 0, 0, 0);
+                }
+                else
+                {
+                    // 设置摩擦轮目标速度为预定义的弹速对应转速
+                // Set friction wheel target speed to predefined bullet speed
+                shoot_control.fric_set = 0.0f;
+
+                // 读取左右摩擦轮电机速度反馈，转换 RPM 到实际速度单位
+                // Read left and right friction wheel motor speed feedback, convert RPM to actual speed units
+                shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
+                shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
+
+                // PID 速度闭环控制：左摩擦轮反向旋转，右摩擦轮正向旋转（从后方看，两轮相向旋转夹紧弹丸）
+                // PID speed closed-loop control: left wheel rotates forward, right wheel rotates backward (viewed from rear, wheels rotate towards each other to grip projectile)
+                PID_calc(&shoot_control.fric_motor_L_pid, shoot_control.fricL_speed, -shoot_control.fric_set);
+                PID_calc(&shoot_control.fric_motor_R_pid, shoot_control.fricR_speed, shoot_control.fric_set);
+
+                // 将 PID 输出转换为电机驱动电流（int16_t 范围）
+                // Convert PID output to motor drive current (int16_t range)
+                shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out);
+                shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out);
+
+                // 通过 CAN 总线发送摩擦轮电机电流指令
+                // Send friction wheel motor current commands via CAN bus
+                CAN_cmd_fric(shoot_control.fric_r_current, shoot_control.fric_l_current, 0, 0);
+                }
             }
         }
 
@@ -781,6 +810,7 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
         return; // Skip update if motor data not ready
     }
 
+    last_yaw_angle=feedback_update->gimbal_yaw_motor.absolute_angle;
     // 云台数据更新
     // pitch绝对角度 = 初始化时的角度加上INS_PITCH_ADDRESS_OFFSET
     feedback_update->gimbal_pitch_motor.absolute_angle = *(feedback_update->gimbal_INT_angle_point + INS_PITCH_ADDRESS_OFFSET);
@@ -806,6 +836,7 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
                                                                                   feedback_update->gimbal_yaw_motor.offset_ecd);
 #endif
     feedback_update->gimbal_yaw_motor.motor_gyro = arm_cos_f32(feedback_update->gimbal_pitch_motor.absolute_angle) * (*(feedback_update->gimbal_INT_gyro_point + INS_GYRO_Z_ADDRESS_OFFSET)) - arm_sin_f32(feedback_update->gimbal_pitch_motor.absolute_angle) * (*(feedback_update->gimbal_INT_gyro_point + INS_GYRO_X_ADDRESS_OFFSET));
+    yaw_angle_change=feedback_update->gimbal_yaw_motor.absolute_angle - last_yaw_angle;
 }
 
 /**
