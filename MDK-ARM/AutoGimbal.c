@@ -1,4 +1,5 @@
 #include "AutoGimbal.h"
+#if 0
 #include "referee.h"
 #include "main.h"
 #include "string.h"
@@ -158,3 +159,132 @@ CTRL *get_AUTO_control_point(void)
 
 
 	
+#endif
+
+extern UART_HandleTypeDef huart1;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+
+#define VISION_RX_FRAME_LENGTH 29
+
+#pragma pack(push, 1)
+volatile uint32_t vision_last_target_time = 0;
+typedef struct
+{
+    uint8_t head[2];
+    uint8_t mode;
+    float yaw;
+    float yaw_vel;
+    float yaw_acc;
+    float pitch;
+    float pitch_vel;
+    float pitch_acc;
+    uint8_t tail[2];
+} vision_rx_frame_t;
+#pragma pack(pop)
+
+typedef union
+{
+    vision_rx_frame_t frame;
+    uint8_t raw[VISION_RX_FRAME_LENGTH];
+} vision_rx_buffer_t;
+
+static uint8_t sbus_rx_double_buf[2][BUFLENGTH];
+static uint8_t usart1_tx_dma_buf[VISION_TX_FRAME_LENGTH];
+static uint8_t rx_buf_idx = 0;
+static vision_rx_buffer_t vision_rx_data;
+static BUF RresPi;
+
+vision_tx_buffer_t auto_to_nuc_data;
+uint8_t data_length = 0;
+
+void vision_try_transmit(void)
+{
+    if (huart1.gState == HAL_UART_STATE_READY)
+    {
+        memcpy(usart1_tx_dma_buf, auto_to_nuc_data.raw, sizeof(usart1_tx_dma_buf));
+        HAL_UART_Transmit_DMA(&huart1, usart1_tx_dma_buf, sizeof(usart1_tx_dma_buf));
+    }
+}
+
+void AUTO_control_init(void)
+{
+    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+    rx_buf_idx = 0;
+    vision_last_target_time = 0;
+    RresPi.Rec.mode = 0;
+    RresPi.Rec.x = 0.0f;
+    RresPi.Rec.y = 0.0f;
+    RresPi.Rec.distance = -1.0f;
+    HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
+    vision_try_transmit();
+}
+
+static void vision_memory_from_buffer(uint8_t *buffer, vision_rx_frame_t *ctrl)
+{
+    memcpy(ctrl, buffer, sizeof(*ctrl));
+}
+
+void memory_from_buffer(uint8_t *buffer, CTRL *ctrl)
+{
+    memcpy(ctrl, buffer, sizeof(*ctrl));
+}
+
+static void Usart1Receive_IDLE(void)
+{
+    uint8_t *process_buf;
+    uint8_t frame_received = 0;
+    uint16_t i;
+
+    HAL_UART_AbortReceive(&huart1);
+
+    data_length = BUFLENGTH - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
+    process_buf = sbus_rx_double_buf[rx_buf_idx];
+    rx_buf_idx ^= 1;
+
+    HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
+
+    if (data_length < VISION_RX_FRAME_LENGTH)
+    {
+        return;
+    }
+
+    for (i = 0; i + VISION_RX_FRAME_LENGTH <= data_length; i++)
+    {
+        if (process_buf[i] == 0x5A &&
+            process_buf[i + 1] == 0xA5 &&
+            process_buf[i + VISION_RX_FRAME_LENGTH - 2] == 0x7F &&
+            process_buf[i + VISION_RX_FRAME_LENGTH - 1] == 0xFE)
+        {
+            vision_memory_from_buffer(&process_buf[i], &vision_rx_data.frame);
+            RresPi.Rec.FRAME_HEADER = 0xFF;
+            RresPi.Rec.mode = vision_rx_data.frame.mode;
+            RresPi.Rec.x = vision_rx_data.frame.yaw;
+            RresPi.Rec.y = -vision_rx_data.frame.pitch;
+            RresPi.Rec.distance = (vision_rx_data.frame.mode == 2) ? 0.0f : -1.0f;
+            vision_last_target_time = HAL_GetTick();
+            RresPi.Rec.blank = 0;
+            RresPi.Rec.FRAME_TAIL = 0x0D;
+            frame_received = 1;
+            i += VISION_RX_FRAME_LENGTH - 1;
+        }
+    }
+
+    if (frame_received)
+    {
+        vision_try_transmit();
+    }
+}
+
+void USART1_IDLE_Handler(void)
+{
+    if (RESET != __HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))
+    {
+        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+        Usart1Receive_IDLE();
+    }
+}
+
+CTRL *get_AUTO_control_point(void)
+{
+    return &RresPi.Rec; 
+}

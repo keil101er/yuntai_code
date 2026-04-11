@@ -111,7 +111,7 @@
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
 // #define YAW_AUTO_LOW_ABSOLUTE_PID_KP       28.0f//60
-#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       20.0f//60
+#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       9.0f//60
 // #define YAW_AUTO_LOW_ABSOLUTE_PID_KP       15.0f//60
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KI       0.0f
 // #define YAW_AUTO_LOW_ABSOLUTE_PID_KD       -1.0f
@@ -290,7 +290,7 @@ typedef struct
 typedef struct
 {
     const RC_ctrl_t *gimbal_rc_ctrl;
-		CTRL *gimbal_AUTO_ctrl;
+    CTRL *gimbal_AUTO_ctrl;
     const fp32 *gimbal_INT_angle_point;//获取角度
     const fp32 *gimbal_INT_gyro_point;//获取陀螺仪角速度
 //	  c_fbpara_t  C_data;

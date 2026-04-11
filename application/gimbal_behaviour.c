@@ -96,6 +96,9 @@
 uint8_t auto_flag=0;
 uint8_t last_auto_flag=0; 
 uint8_t auto_cnt=0;
+static uint32_t last_consumed_target_time = 0;
+extern volatile uint32_t vision_last_target_time;
+#define AUTO_AIM_HOLD_MS 100U
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,
@@ -326,7 +329,7 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set,c_fbpara_t *cha
         gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
         gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
     }    
-		else if (gimbal_behaviour == GIMBAL_AUTO)  //行为模式为自瞄模式(暂时没开)
+		else if (gimbal_behaviour == GIMBAL_AUTO)  //行为模式为自瞄模式
     {
         gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_AUTO;
         gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_AUTO;
@@ -363,52 +366,67 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 //			gimbal_control_set->gimbal_AUTO_ctrl->y = fabs(gimbal_control_set->gimbal_AUTO_ctrl->y) >3.0f ?gimbal_control_set->gimbal_AUTO_ctrl->y:gimbal_control_set->gimbal_AUTO_ctrl->y/1.2f;
 //			if(fabs(gimbal_control_set->gimbal_AUTO_ctrl->y)<1.0f) gimbal_control_set->gimbal_AUTO_ctrl->y =0; 
 	//如果接收相同自瞄数据超过一定次数，就切回手动控制
-	if(auto_cnt>10)
+	// if(auto_cnt>10)
+  // {
+  //   auto_cnt=11;
+  //   auto_flag=0;
+  //   *yaw = -chassis_transmit->receive_yaw_ch*4;
+  //   *pitch = - chassis_transmit->receive_pitch_ch*3;
+  // }
+  // else
+  // {
+	// // 如果没有识别到目标，关闭自瞄控制
+  // // if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
+  //   if(gimbal_control_set->gimbal_AUTO_ctrl->distance==-1)
+  //   {
+  //     auto_flag=0;
+  //     *yaw = -chassis_transmit->receive_yaw_ch*4;
+  //     *pitch = - chassis_transmit->receive_pitch_ch*3;
+  //   }
+	//   else
+	//   {
+  //     auto_flag=1;
+	// 	//小陀螺模式下的赋值
+	// 	  if(chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
+	// 	  {
+	// 	    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
+  //       // *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
+  //       *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
+  //       *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//
+	// 	  }
+	// 	  //底盘跟随云台下的赋值
+	// 	  else
+	// 	  {
+	// 	    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
+  //       // *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
+	// 	    *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
+  //       *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//        
+	// 	  }	
+	//   }
+  // }
+   uint32_t target_time = vision_last_target_time;
+  uint32_t dt = (target_time == 0U) ? AUTO_AIM_HOLD_MS : (HAL_GetTick() - target_time);
+
+  if(target_time != 0U && target_time != last_consumed_target_time && dt < AUTO_AIM_HOLD_MS)
   {
-    auto_cnt=11;
-    auto_flag=0;
-    *yaw = -chassis_transmit->receive_yaw_ch*4;
-    *pitch = - chassis_transmit->receive_pitch_ch*3;
+    auto_flag=1;
+    *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x;
+    *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;
+    last_consumed_target_time = target_time;
   }
+  // else if(target_time != 0U && dt < AUTO_AIM_HOLD_MS)
   else
   {
-	// 如果没有识别到目标，关闭自瞄控制
-  // if (gimbal_control_set->gimbal_AUTO_ctrl->x == 0 && gimbal_control_set->gimbal_AUTO_ctrl->y == 0)
-    if(gimbal_control_set->gimbal_AUTO_ctrl->distance==-1)
-    {
-      auto_flag=0;
-      *yaw = -chassis_transmit->receive_yaw_ch*4;
-      *pitch = - chassis_transmit->receive_pitch_ch*3;
-    }
-	  else
-	  {
-      auto_flag=1;
-		//小陀螺模式下的赋值
-		  if(chassis_behaviour_mode == CHASSIS_NO_FOLLOW_YAW)
-		  {
-		    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN_WZ; //
-        // *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* YAW_AUTO_SEN_WZ;//
-        *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
-        *pitch  =-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//
-		  }
-		  //底盘跟随云台下的赋值
-		  else
-		  {
-		    // *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x* YAW_AUTO_SEN; //
-        // *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y* PITCH_AUTO_SEN;//
-		    *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x; //
-        *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;//        
-		  }	
-	  }
+    auto_flag=1;
+    *yaw = gimbal_control_set->gimbal_yaw_motor.absolute_angle_set - gimbal_control_set->gimbal_yaw_motor.absolute_angle;
+    *pitch = gimbal_control_set->gimbal_pitch_motor.absolute_angle_set - gimbal_control_set->gimbal_pitch_motor.absolute_angle;
   }
-		gimbal_control_set->gimbal_yaw_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->x;
-		gimbal_control_set->gimbal_pitch_motor.last_auto_data = gimbal_control_set->gimbal_AUTO_ctrl->y;
-		// gimbal_control_set->gimbal_AUTO_ctrl->x = 0.0f;
-		// gimbal_control_set->gimbal_AUTO_ctrl->y = 0.0f;		
-		yaw_value = gimbal_control_set->gimbal_yaw_motor.absolute_angle;
-	    pitch_value = gimbal_control_set->gimbal_pitch_motor.absolute_angle;
-//	    send_gimbal_angles(1,0.0f,pitch_value,yaw_value);
-//		send_gimbal_angles(1,0.0f,1.0f,2.0f);
+  // else
+  // {
+  //   auto_flag=0;
+  //   *yaw = -chassis_transmit->receive_yaw_ch*4;
+  //   *pitch = - chassis_transmit->receive_pitch_ch*3;
+  // }
 }
 
 /**

@@ -1,8 +1,8 @@
 #ifndef AUTOGIMBAL_H
 #define AUTOGIMBAL_H
-#include "string.h"
 #include "main.h"
 #include "referee.h"
+#include "string.h"
 #define BUFLENGTH  		128//最大接收的数据
 #define DATELENGTH		16//有效数据
 
@@ -77,7 +77,35 @@ GAME_DATE_t GAME_DATE;
 
 extern void  AUTO_control_init(void);
 extern CTRL *get_AUTO_control_point(void);
+extern volatile uint32_t vision_last_target_time;
 extern void memory_from_buffer(uint8_t *buffer, CTRL *ctrl);
 extern void USART1_IDLE_Handler(void);
+extern void vision_try_transmit(void);
+
+#define VISION_TX_FRAME_LENGTH 43
+
+#pragma pack(push, 1)
+typedef struct
+{
+    uint8_t head[2];
+    uint8_t mode;
+    float q[4];
+    float yaw;
+    float yaw_vel;
+    float pitch;
+    float pitch_vel;
+    float bullet_speed;
+    uint16_t bullet_count;
+    uint8_t tail[2];
+} vision_tx_frame_t;
+#pragma pack(pop)
+
+typedef union
+{
+    vision_tx_frame_t frame;
+    uint8_t raw[VISION_TX_FRAME_LENGTH];
+} vision_tx_buffer_t;
+
+typedef char vision_tx_frame_size_check[(sizeof(vision_tx_frame_t) == VISION_TX_FRAME_LENGTH) ? 1 : -1];
 #endif
 

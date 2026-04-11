@@ -56,6 +56,7 @@ fp32 add_yaw_angle = 0.0f;
 fp32 add_pitch_angle = 0.0f;
 extern uint8_t auto_flag;
 extern uint8_t last_auto_flag;
+uint8_t fire_mode=0;
 // motor enconde value format, range[0-8191]
 // 电机编码值规整 0—8191
 #define ecd_format(ecd)         \
@@ -214,7 +215,7 @@ gimbal_control_t gimbal_control;
 static int16_t pitch_can_set_current = 0, shoot_can_set_current = 0;
 fp32 yaw_can_set_current = 0;
 // 自瞄时 发给nuc的数据
-extern TX_AUTO_AIM auto_to_nuc_data;
+extern vision_tx_buffer_t auto_to_nuc_data;
 extern int board_receive_data[8];
 extern robot_status_t robot_state;
 
@@ -223,7 +224,9 @@ extern c_fbpara_t receive_chassis_data;
 extern motor_measure_t motor_chassis[9];
 
 extern shoot_control_t shoot_control; // 射击数据
+extern shoot_data_t shoot_data_t1;
 
+uint16_t gimbal_motor_enable_cnt=0;
 void gimbal_task(void const *pvParameters)
 {
     // 等待陀螺仪任务更新陀螺仪数据
@@ -262,18 +265,23 @@ void gimbal_task(void const *pvParameters)
     while (1)
     {
         // 使能pitch4310
-        for (int j = 0; j < 10; j++)
+        gimbal_motor_enable_cnt++;
+        if(gimbal_motor_enable_cnt>=10)
         {
-            init_gimbalpitch();
-            osDelay(1);
-        }
+            // 使能pitch4310
+            for (int j = 0; j < 5; j++)
+            {
+                init_gimbalpitch();
+                osDelay(1);
+            }
+            // 使能yaw4310
+            for (int j = 0; j < 5; j++)
+            {
 
-        // 使能yaw4310
-        for (int j = 0; j < 10; j++)
-        {
-
-            enable_motor_mode_yaw();
-            osDelay(1);
+                enable_motor_mode_yaw();
+                osDelay(1);
+            }
+            gimbal_motor_enable_cnt=0;
         }
         //********************************************************************************
         // 云台行为状态机以及电机状态机设置
@@ -313,7 +321,7 @@ void gimbal_task(void const *pvParameters)
             mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, 0);
             osDelay(2);
         }
-        else if (receive_chassis_data.mode_flag == 1||receive_chassis_data.mode_flag == 2)
+        else if (receive_chassis_data.mode_flag == 1 || receive_chassis_data.mode_flag == 2)
         {
             //              CAN_cmd_gimbal(shoot_can_set_current,0);
             //				osDelay(2);
@@ -346,19 +354,48 @@ void gimbal_task(void const *pvParameters)
                 // 通过 CAN 总线发送摩擦轮电机电流指令
                 // Send friction wheel motor current commands via CAN bus
                 CAN_cmd_fric(shoot_control.fric_r_current, shoot_control.fric_l_current, 0, 0);
+                // CAN_cmd_fric(1000.0f, -1000.0f, 0, 0);
             }
             // 射击标志为 0：停止摩擦轮
             // Shoot flag is 0: Stop friction wheels
             else if (receive_chassis_data.reserve1 == 0)
             {
-                // 将电流设为 0，停止摩擦轮电机
-                // Set current to 0, stop friction wheel motors
-                shoot_control.fric_l_current = 0;
-                shoot_control.fric_r_current = 0;
+                if (fabs(shoot_control.fricL_speed) < 1.0f || fabs(shoot_control.fricR_speed) < 1.0f)
+                {
+                    // 将电流设为 0，停止摩擦轮电机
+                    // Set current to 0, stop friction wheel motors
+                    shoot_control.fric_l_current = 0;
+                    shoot_control.fric_r_current = 0;
 
-                // 发送停止指令到摩擦轮电机
-                // Send stop command to friction wheel motors
-                CAN_cmd_fric(0, 0, 0, 0);
+                    // 发送停止指令到摩擦轮电机
+                    // Send stop command to friction wheel motors
+                    CAN_cmd_fric(0, 0, 0, 0);
+                }
+                else
+                {
+                    // 设置摩擦轮目标速度为预定义的弹速对应转速
+                    // Set friction wheel target speed to predefined bullet speed
+                    shoot_control.fric_set = 0.0f;
+
+                    // 读取左右摩擦轮电机速度反馈，转换 RPM 到实际速度单位
+                    // Read left and right friction wheel motor speed feedback, convert RPM to actual speed units
+                    shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
+                    shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
+
+                    // PID 速度闭环控制：左摩擦轮反向旋转，右摩擦轮正向旋转（从后方看，两轮相向旋转夹紧弹丸）
+                    // PID speed closed-loop control: left wheel rotates forward, right wheel rotates backward (viewed from rear, wheels rotate towards each other to grip projectile)
+                    PID_calc(&shoot_control.fric_motor_L_pid, shoot_control.fricL_speed, -shoot_control.fric_set);
+                    PID_calc(&shoot_control.fric_motor_R_pid, shoot_control.fricR_speed, shoot_control.fric_set);
+
+                    // 将 PID 输出转换为电机驱动电流（int16_t 范围）
+                    // Convert PID output to motor drive current (int16_t range)
+                    shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out);
+                    shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out);
+
+                    // 通过 CAN 总线发送摩擦轮电机电流指令
+                    // Send friction wheel motor current commands via CAN bus
+                    CAN_cmd_fric(shoot_control.fric_r_current, shoot_control.fric_l_current, 0, 0);
+                }
             }
         }
 
@@ -734,10 +771,13 @@ static void gimbal_set_mode(gimbal_control_t *set_mode, c_fbpara_t *motor)
 int color;
 static void gimbal_feedback_update(gimbal_control_t *feedback_update)
 {
+    const fp32 *quat;
+
     if (feedback_update == NULL)
     {
         return;
     }
+    #if 0
     auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_HEADER = 0xff;
     if (0 < aim_color_id < 10)
     {
@@ -763,13 +803,17 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
     auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.yaw = feedback_update->gimbal_yaw_motor.absolute_angle;
     auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.blank = 0;
     auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA.FRAME_TAIL = 0x0d;
-    
+    #endif
+
     shoot_control.fricL_speed = shoot_control.fricL_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
     shoot_control.fricR_speed = shoot_control.fricR_motor_measure->speed_rpm * FRIC_RPM_TO_SPEED;
 
     // Check if INS data pointers are valid
+    quat = get_INS_quat_point();
+
     if (feedback_update->gimbal_INT_angle_point == NULL ||
-        feedback_update->gimbal_INT_gyro_point == NULL)
+        feedback_update->gimbal_INT_gyro_point == NULL ||
+        quat == NULL)
     {
         return; // Skip update if INS data not ready
     }
@@ -806,6 +850,27 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update)
                                                                                   feedback_update->gimbal_yaw_motor.offset_ecd);
 #endif
     feedback_update->gimbal_yaw_motor.motor_gyro = arm_cos_f32(feedback_update->gimbal_pitch_motor.absolute_angle) * (*(feedback_update->gimbal_INT_gyro_point + INS_GYRO_Z_ADDRESS_OFFSET)) - arm_sin_f32(feedback_update->gimbal_pitch_motor.absolute_angle) * (*(feedback_update->gimbal_INT_gyro_point + INS_GYRO_X_ADDRESS_OFFSET));
+
+    // feedback_update->gimbal_yaw_motor.absolute_angle-=0.000118f;//补偿零飘
+
+    auto_to_nuc_data.frame.head[0] = 0x5A;
+    auto_to_nuc_data.frame.head[1] = 0xA5;
+    auto_to_nuc_data.frame.mode =
+        (feedback_update->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO &&
+         feedback_update->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO) ? 1 : 0;
+    auto_to_nuc_data.frame.q[0] = quat[0];
+    auto_to_nuc_data.frame.q[1] = quat[1];
+    auto_to_nuc_data.frame.q[2] = quat[2];
+    auto_to_nuc_data.frame.q[3] = quat[3];
+    auto_to_nuc_data.frame.yaw = feedback_update->gimbal_yaw_motor.absolute_angle;
+    auto_to_nuc_data.frame.yaw_vel = feedback_update->gimbal_yaw_motor.motor_gyro;
+    auto_to_nuc_data.frame.pitch = feedback_update->gimbal_pitch_motor.absolute_angle;
+    auto_to_nuc_data.frame.pitch_vel = feedback_update->gimbal_pitch_motor.motor_gyro;
+    auto_to_nuc_data.frame.bullet_speed = shoot_data_t1.initial_speed;
+    auto_to_nuc_data.frame.bullet_count = 0;
+    auto_to_nuc_data.frame.tail[0] = 0x7F;
+    auto_to_nuc_data.frame.tail[1] = 0xFE;
+    vision_try_transmit();
 }
 
 /**
@@ -1141,7 +1206,7 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     //     aim_speed = 0;
     // }
     //CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, aim_speed + 19);
-    CAN_cmd_4310pitch_pvmode(rad_format(gimbal_motor->absolute_angle_set+0.04), aim_speed);
+    CAN_cmd_4310pitch_pvmode(rad_format(gimbal_motor->absolute_angle_set+0.02), 1);
 }
 
 /**
@@ -1164,7 +1229,15 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
     //拨弹盘控制信息发送
     if(control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
-        CAN_gimbal_send__to_chassis(&hcan1,control_loop->gimbal_AUTO_ctrl->mode);
+        if(control_loop->gimbal_AUTO_ctrl->mode==2)
+        {
+            fire_mode=1;
+        }
+        else
+        {
+            fire_mode=0;
+        }
+        CAN_gimbal_send__to_chassis(&hcan1,fire_mode);
     }
     //yaw轴控制
     if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)

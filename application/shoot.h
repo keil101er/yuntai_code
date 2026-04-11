@@ -62,7 +62,7 @@
 
 
 //子弹速度
-#define BULLET_SPEED         (20.0f)
+#define BULLET_SPEED         (25.0f)
 
 
 #define KEY_OFF_JUGUE_TIME          500 
@@ -89,11 +89,11 @@
 #define TRIGGER_READY_PID_MAX_OUT   10000.0f
 #define TRIGGER_READY_PID_MAX_IOUT  400.0f
 
-#define FRIC_SPEED_PID_KP        4000.0f
+#define FRIC_SPEED_PID_KP        3000.0f
 #define FRIC_SPEED_PID_KI        18.0f
-#define FRIC_SPEED_PID_KD        1.0f
+#define FRIC_SPEED_PID_KD        0.0f
 #define FRIC_PID_MAX_OUT         16300.0f
-#define FRIC_PID_MAX_IOUT        10000.0f
+#define FRIC_PID_MAX_IOUT        7000.0f
 
 #define SHOOT_HEAT_REMAIN_VALUE     20
 
