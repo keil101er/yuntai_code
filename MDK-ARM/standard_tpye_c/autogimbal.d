@@ -1,6 +1,5 @@
 standard_tpye_c\autogimbal.o: AutoGimbal.c
 standard_tpye_c\autogimbal.o: AutoGimbal.h
-standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\autogimbal.o: ../Inc/main.h
 standard_tpye_c\autogimbal.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h
 standard_tpye_c\autogimbal.o: ../Inc/stm32f4xx_hal_conf.h
@@ -50,11 +49,4 @@ standard_tpye_c\autogimbal.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_
 standard_tpye_c\autogimbal.o: ../application/referee.h
 standard_tpye_c\autogimbal.o: ../application/protocol/protocol.h
 standard_tpye_c\autogimbal.o: ../application/struct_typedef.h
-standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
-standard_tpye_c\autogimbal.o: ../application/gimbal_task.h
-standard_tpye_c\autogimbal.o: ../application/CAN_receive.h
-standard_tpye_c\autogimbal.o: ../Inc/can.h
-standard_tpye_c\autogimbal.o: ../components/controller/pid.h
-standard_tpye_c\autogimbal.o: ../application/remote_control.h
-standard_tpye_c\autogimbal.o: ../bsp/boards/bsp_rc.h
-standard_tpye_c\autogimbal.o: ../bsp/boards/CANdata_analysis.h
+standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

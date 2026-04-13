@@ -69,9 +69,9 @@ standard_tpye_c\freertos.o: ../components/controller/pid.h
 standard_tpye_c\freertos.o: ../application/remote_control.h
 standard_tpye_c\freertos.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\freertos.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\freertos.o: ../application/referee.h
 standard_tpye_c\freertos.o: ../application/protocol/protocol.h
+standard_tpye_c\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\freertos.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\freertos.o: ../components/algorithm/user_lib.h
 standard_tpye_c\freertos.o: ../application/detect_task.h

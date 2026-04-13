@@ -55,9 +55,9 @@ standard_tpye_c\chassis_power_control.o: ../components/controller/pid.h
 standard_tpye_c\chassis_power_control.o: ..\application\remote_control.h
 standard_tpye_c\chassis_power_control.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\chassis_power_control.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\chassis_power_control.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\chassis_power_control.o: ../application/referee.h
 standard_tpye_c\chassis_power_control.o: ../application/protocol/protocol.h
+standard_tpye_c\chassis_power_control.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\chassis_power_control.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\chassis_power_control.o: ../components/algorithm/user_lib.h
 standard_tpye_c\chassis_power_control.o: ../components/algorithm/Include/arm_math.h

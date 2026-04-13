@@ -55,9 +55,9 @@ standard_tpye_c\chassis_behaviour.o: ../components/controller/pid.h
 standard_tpye_c\chassis_behaviour.o: ..\application\remote_control.h
 standard_tpye_c\chassis_behaviour.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\chassis_behaviour.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\chassis_behaviour.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\chassis_behaviour.o: ../application/referee.h
 standard_tpye_c\chassis_behaviour.o: ../application/protocol/protocol.h
+standard_tpye_c\chassis_behaviour.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\chassis_behaviour.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\chassis_behaviour.o: ../components/algorithm/user_lib.h
 standard_tpye_c\chassis_behaviour.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h

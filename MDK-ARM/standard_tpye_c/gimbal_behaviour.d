@@ -54,9 +54,9 @@ standard_tpye_c\gimbal_behaviour.o: ../components/controller/pid.h
 standard_tpye_c\gimbal_behaviour.o: ..\application\remote_control.h
 standard_tpye_c\gimbal_behaviour.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\gimbal_behaviour.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\gimbal_behaviour.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\gimbal_behaviour.o: ../application/referee.h
 standard_tpye_c\gimbal_behaviour.o: ../application/protocol/protocol.h
+standard_tpye_c\gimbal_behaviour.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\gimbal_behaviour.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\gimbal_behaviour.o: ../components/algorithm/Include/arm_math.h
 standard_tpye_c\gimbal_behaviour.o: ../Drivers/CMSIS/Include/core_cm4.h

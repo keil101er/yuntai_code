@@ -98,6 +98,7 @@ typedef struct
 	motor_fbpara_t para;
 }Yaw_Motor_t;
 
+
 //超电
 extern void CAN_cmd_SuperCap(uint16_t powerLimit);
 /*

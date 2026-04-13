@@ -53,9 +53,9 @@ standard_tpye_c\gimbal_task.o: ../components/controller/pid.h
 standard_tpye_c\gimbal_task.o: ..\application\remote_control.h
 standard_tpye_c\gimbal_task.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\gimbal_task.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\gimbal_task.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\gimbal_task.o: ../application/referee.h
 standard_tpye_c\gimbal_task.o: ../application/protocol/protocol.h
+standard_tpye_c\gimbal_task.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\gimbal_task.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\gimbal_task.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 standard_tpye_c\gimbal_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h

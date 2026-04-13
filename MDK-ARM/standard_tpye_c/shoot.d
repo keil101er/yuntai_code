@@ -54,9 +54,9 @@ standard_tpye_c\shoot.o: ../components/controller/pid.h
 standard_tpye_c\shoot.o: ..\application\remote_control.h
 standard_tpye_c\shoot.o: ../bsp/boards/bsp_rc.h
 standard_tpye_c\shoot.o: ../MDK-ARM/AutoGimbal.h
-standard_tpye_c\shoot.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\shoot.o: ../application/referee.h
 standard_tpye_c\shoot.o: ../application/protocol/protocol.h
+standard_tpye_c\shoot.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 standard_tpye_c\shoot.o: ../bsp/boards/CANdata_analysis.h
 standard_tpye_c\shoot.o: ../components/algorithm/user_lib.h
 standard_tpye_c\shoot.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h

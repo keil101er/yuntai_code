@@ -85,7 +85,8 @@ extern c_fbpara_t  receive_chassis_data;
 uint8_t test_data[8];
 
 Yaw_Motor_t yaw_motor[2];
-
+Yaw_Motor_t pitch_motor;
+motor_measure_t motor_pitch;
 /**
 ************************************************************************
 * @brief:      	float_to_uint: 浮点数转换为无符号整数函数
@@ -177,13 +178,26 @@ else if (hcan==&hcan2){
 	switch (rx_header.StdId)
 	{ 
 		case CAN_PITCH_MOTOR_ID:
-        {
-          get_motor_measure(&motor_chassis[5], rx_data);
-			    motor_chassis[5].speed_rpm=(motor_chassis[5].speed_rpm);
-		  	  i = motor_chassis[5].ecd;
-            //detect_hook(PITCH_GIMBAL_MOTOR_TOE);
-			    break;
-        }
+        // {
+        //   get_motor_measure(&motor_chassis[5], rx_data);
+			  //   motor_chassis[5].speed_rpm=(motor_chassis[5].speed_rpm);
+		  	//   i = motor_chassis[5].ecd;
+        //     //detect_hook(PITCH_GIMBAL_MOTOR_TOE);
+			  //   break;
+        // }
+      {
+		   dm4310_fbdata1(&pitch_motor, rx_data,8);
+		   if(pitch_motor.para.pos>=6.25&&pitch_motor.para.pos<=12.5)
+               pitch_motor.para.pos-=6.25;
+           if(pitch_motor.para.pos<=0&&pitch_motor.para.pos>-6.25)
+               pitch_motor.para.pos+=6.25;
+           if(pitch_motor.para.pos<=-6.25&&pitch_motor.para.pos>=-12.5)
+               pitch_motor.para.pos+=12.5;                             
+              
+		       motor_pitch.last_ecd=motor_pitch.ecd;
+            motor_pitch.ecd=pitch_motor.para.pos*8192/6.25;
+            break;
+      }
 	//摩擦轮
   	//CAN_FRIC_L_ID = 0x206,  //motor_chassis[8]
 	    case CAN_FRIC_L_ID:
@@ -542,7 +556,7 @@ const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)
   */
 const motor_measure_t *get_pitch_gimbal_motor_measure_point(void)
 {
-    return &motor_chassis[5];
+    return &motor_pitch;
 }
 
 

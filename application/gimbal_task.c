@@ -222,6 +222,8 @@ extern robot_status_t robot_state;
 extern c_fbpara_t receive_chassis_data;
 
 extern motor_measure_t motor_chassis[9];
+extern motor_measure_t motor_pitch;
+float pitch_angle=0;
 
 extern shoot_control_t shoot_control; // 射击数据
 extern shoot_data_t shoot_data_t1;
@@ -292,7 +294,7 @@ void gimbal_task(void const *pvParameters)
         gimbal_feedback_update(&gimbal_control); // 云台数据反馈
 
         gimbal_control.yaw_motor_angle = -motor_ecd_to_angle_change(motor_chassis[4].ecd, 0);
-
+        pitch_angle=motor_ecd_to_angle_change(motor_pitch.ecd, 0);
         gimbal_set_control(&gimbal_control, &receive_chassis_data); // 设置云台控制量
 
         //****************************************************************************************************************************
@@ -1162,15 +1164,61 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
     gimbal_motor->given_current_yaw =(gimbal_motor->current_set);                                                       
 }
 
+// static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
+// {
+//      float min_speed = 5.0f; // 实测能克服静摩擦的最小速度
+//     if (gimbal_motor == NULL)
+//     {
+//         return;
+//     }
+//     CTRL *ctrl = get_AUTO_control_point();
+
+//     if (gimbal_motor->absolute_angle_set > 0.3f)
+//     {
+//         gimbal_motor->absolute_angle_set = 0.3f;
+//     }
+//     else if (gimbal_motor->absolute_angle_set < -0.45f)
+//     {
+//         gimbal_motor->absolute_angle_set = -0.45f;
+//     }
+
+//     // 计算当前角度与目标角度的差值
+//     // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
+//     // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756);
+//     angle_error = gimbal_motor->absolute_angle_set - (gimbal_motor->absolute_angle);
+
+//     // 设置最大速度
+//     float max_speed = 30.0f;
+
+//     // 计算目标速度，距离目标位置越近，速度越小
+//     aim_speed = max_speed * fabs(angle_error) * 5;
+
+//     // 限制目标速度在0到max_speed之间
+//     if (aim_speed > max_speed)
+//     {
+//         aim_speed = max_speed;
+//     }
+   
+//     if (aim_speed < min_speed && fabs(angle_error) > 0.01f)
+//     {
+//         aim_speed = min_speed;
+//     }
+//     // else if (aim_speed < 0)
+//     // {
+//     //     aim_speed = 0;
+//     // }
+//     //CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, aim_speed + 19);
+//     CAN_cmd_4310pitch_pvmode(rad_format(gimbal_motor->absolute_angle_set), 2);
+// }
 static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
-     float min_speed = 5.0f; // 实测能克服静摩擦的最小速度
+    fp32 pitch_motor_position_set;
+    float min_speed = 5.0f;
+
     if (gimbal_motor == NULL)
     {
         return;
     }
-    CTRL *ctrl = get_AUTO_control_point();
-
     if (gimbal_motor->absolute_angle_set > 0.3f)
     {
         gimbal_motor->absolute_angle_set = 0.3f;
@@ -1180,33 +1228,23 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
         gimbal_motor->absolute_angle_set = -0.45f;
     }
 
-    // 计算当前角度与目标角度的差值
-    // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
-    // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756);
-    angle_error = gimbal_motor->absolute_angle_set - (gimbal_motor->absolute_angle);
+    angle_error = rad_format((gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle) * 1.3);
 
-    // 设置最大速度
-    float max_speed = 30.0f;
+    // 把 IMU pitch 误差转换成电机位置目标，抵消机身俯仰扰动
+    pitch_motor_position_set = rad_format(pitch_angle + angle_error);
+    gimbal_motor->relative_angle_set = pitch_motor_position_set;
 
-    // 计算目标速度，距离目标位置越近，速度越小
-    aim_speed = max_speed * fabs(angle_error) * 5;
-
-    // 限制目标速度在0到max_speed之间
-    if (aim_speed > max_speed)
+    aim_speed = 30.0f * fabs(angle_error) * 5.0f;
+    if (aim_speed > 30.0f)
     {
-        aim_speed = max_speed;
+        aim_speed = 30.0f;
     }
-   
     if (aim_speed < min_speed && fabs(angle_error) > 0.01f)
     {
         aim_speed = min_speed;
     }
-    // else if (aim_speed < 0)
-    // {
-    //     aim_speed = 0;
-    // }
-    //CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, aim_speed + 19);
-    CAN_cmd_4310pitch_pvmode(rad_format(gimbal_motor->absolute_angle_set+0.02), 1);
+
+    CAN_cmd_4310pitch_pvmode(pitch_motor_position_set, 2);
 }
 
 /**
@@ -1307,43 +1345,78 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
  * @param[out]     gimbal_motor:yaw电机或者pitch电机
  * @retval         none
  */
+// static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_motor)
+// {
+//     if (gimbal_motor == NULL)
+//     {
+//         return;
+//     }
+//     // 角度环，速度环串级pid调试
+
+//     if (gimbal_motor->absolute_angle_set > 0.22)
+//     {
+//         gimbal_motor->absolute_angle_set = 0.22;
+//     }
+//     else if (gimbal_motor->absolute_angle_set < -0.4)
+//     {
+//         gimbal_motor->absolute_angle_set = -0.4;
+//     }
+
+//     // 计算差值
+//     angle_error = gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle ;
+
+//     // 设置最大速度
+//     float max_speed = 30.0f;
+
+//     // 计算目标速度
+//     aim_speed = max_speed * fabs(angle_error) * 0.6;
+
+//     // 限制目标速度
+//     if (aim_speed > max_speed)
+//     {
+//         aim_speed = max_speed;
+//     }
+//     else if (aim_speed < 0)
+//     {
+//         aim_speed = 0;
+//     }
+
+//     CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, 10);
+// }
 static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
+    fp32 pitch_motor_position_set;
     if (gimbal_motor == NULL)
     {
         return;
     }
-    // 角度环，速度环串级pid调试
 
-    if (gimbal_motor->absolute_angle_set > 0.22)
+    if (gimbal_motor->absolute_angle_set > 0.22f)
     {
-        gimbal_motor->absolute_angle_set = 0.22;
+        gimbal_motor->absolute_angle_set = 0.22f;
     }
-    else if (gimbal_motor->absolute_angle_set < -0.4)
+    else if (gimbal_motor->absolute_angle_set < -0.4f)
     {
-        gimbal_motor->absolute_angle_set = -0.4;
-    }
-
-    // 计算差值
-    angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
-
-    // 设置最大速度
-    float max_speed = 30.0f;
-
-    // 计算目标速度
-    aim_speed = max_speed * fabs(angle_error) * 0.6;
-
-    // 限制目标速度
-    if (aim_speed > max_speed)
-    {
-        aim_speed = max_speed;
-    }
-    else if (aim_speed < 0)
-    {
-        aim_speed = 0;
+        gimbal_motor->absolute_angle_set = -0.4f;
     }
 
-    CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, 10);
+    angle_error = rad_format(gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle);
+
+    // 用 IMU 误差修正当前电机角，而不是把 IMU 目标直接当成电机位置发出去
+    pitch_motor_position_set = rad_format(pitch_angle + angle_error);
+    gimbal_motor->relative_angle_set = pitch_motor_position_set;
+
+    aim_speed = 30.0f * fabs(angle_error) * 0.6f;
+    if (aim_speed > 30.0f)
+    {
+        aim_speed = 30.0f;
+    }
+    else if (aim_speed < 0.0f)
+    {
+        aim_speed = 0.0f;
+    }
+
+    CAN_cmd_4310pitch_pvmode(pitch_motor_position_set, 10.0f);
 }
 
 // yaw
