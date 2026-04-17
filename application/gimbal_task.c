@@ -229,6 +229,9 @@ extern shoot_control_t shoot_control; // 射击数据
 extern shoot_data_t shoot_data_t1;
 
 uint16_t gimbal_motor_enable_cnt=0;
+
+fp32 pitch_motor_auto_position_set;
+fp32 pitch_motor_position_set;
 void gimbal_task(void const *pvParameters)
 {
     // 等待陀螺仪任务更新陀螺仪数据
@@ -268,7 +271,7 @@ void gimbal_task(void const *pvParameters)
     {
         // 使能pitch4310
         gimbal_motor_enable_cnt++;
-        if(gimbal_motor_enable_cnt>=10)
+        if(gimbal_motor_enable_cnt>=50)
         {
             // 使能pitch4310
             for (int j = 0; j < 5; j++)
@@ -318,9 +321,10 @@ void gimbal_task(void const *pvParameters)
 
         if (receive_chassis_data.mode_flag == 0)
         {
-            CAN_cmd_gimbal(0, 0);
-            osDelay(2);
+            // CAN_cmd_gimbal(0, 0);
             mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, 0);
+            osDelay(2);
+            CAN_cmd_fric(0, 0, 0, 0);
             osDelay(2);
         }
         else if (receive_chassis_data.mode_flag == 1 || receive_chassis_data.mode_flag == 2)
@@ -1212,27 +1216,25 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
 // }
 static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
-    fp32 pitch_motor_position_set;
     float min_speed = 5.0f;
 
     if (gimbal_motor == NULL)
     {
         return;
     }
-    if (gimbal_motor->absolute_angle_set > 0.3f)
+    if (gimbal_motor->absolute_angle_set > 0.4f)
     {
-        gimbal_motor->absolute_angle_set = 0.3f;
+        gimbal_motor->absolute_angle_set = 0.4f;
     }
-    else if (gimbal_motor->absolute_angle_set < -0.45f)
+    else if (gimbal_motor->absolute_angle_set < -0.6f)
     {
-        gimbal_motor->absolute_angle_set = -0.45f;
+        gimbal_motor->absolute_angle_set = -0.6f;
     }
-
     angle_error = rad_format((gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle) * 1.3);
 
     // 把 IMU pitch 误差转换成电机位置目标，抵消机身俯仰扰动
-    pitch_motor_position_set = rad_format(pitch_angle + angle_error);
-    gimbal_motor->relative_angle_set = pitch_motor_position_set;
+    pitch_motor_auto_position_set = rad_format(pitch_angle + angle_error + 0.1);
+    gimbal_motor->relative_angle_set = pitch_motor_auto_position_set;
 
     aim_speed = 30.0f * fabs(angle_error) * 5.0f;
     if (aim_speed > 30.0f)
@@ -1244,7 +1246,16 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
         aim_speed = min_speed;
     }
 
-    CAN_cmd_4310pitch_pvmode(pitch_motor_position_set, 2);
+    if (pitch_motor_auto_position_set > 0.4f)
+    {
+        pitch_motor_auto_position_set = 0.4f;
+    }
+    else if (pitch_motor_auto_position_set < -0.6f)
+    {
+        pitch_motor_auto_position_set = -0.6f;
+    }
+
+    CAN_cmd_4310pitch_pvmode(pitch_motor_auto_position_set, 2);
 }
 
 /**
@@ -1385,25 +1396,22 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
 // }
 static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
-    fp32 pitch_motor_position_set;
     if (gimbal_motor == NULL)
     {
         return;
     }
-
-    if (gimbal_motor->absolute_angle_set > 0.22f)
+    if (gimbal_motor->absolute_angle_set > 0.4f)
     {
-        gimbal_motor->absolute_angle_set = 0.22f;
+        gimbal_motor->absolute_angle_set = 0.4f;
     }
-    else if (gimbal_motor->absolute_angle_set < -0.4f)
+    else if (gimbal_motor->absolute_angle_set < -0.6f)
     {
-        gimbal_motor->absolute_angle_set = -0.4f;
+        gimbal_motor->absolute_angle_set = -0.6f;
     }
-
     angle_error = rad_format(gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle);
 
     // 用 IMU 误差修正当前电机角，而不是把 IMU 目标直接当成电机位置发出去
-    pitch_motor_position_set = rad_format(pitch_angle + angle_error);
+    pitch_motor_position_set = rad_format(pitch_angle + angle_error + 0.1);
     gimbal_motor->relative_angle_set = pitch_motor_position_set;
 
     aim_speed = 30.0f * fabs(angle_error) * 0.6f;
@@ -1414,6 +1422,15 @@ static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_mot
     else if (aim_speed < 0.0f)
     {
         aim_speed = 0.0f;
+    }
+
+    if (pitch_motor_position_set > 0.4f)
+    {
+        pitch_motor_position_set = 0.4f;
+    }
+    else if (pitch_motor_position_set < -0.6f)
+    {
+        pitch_motor_position_set = -0.6f;
     }
 
     CAN_cmd_4310pitch_pvmode(pitch_motor_position_set, 10.0f);
