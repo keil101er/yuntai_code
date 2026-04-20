@@ -99,6 +99,7 @@ uint8_t auto_cnt=0;
 static uint32_t last_consumed_target_time = 0;
 extern volatile uint32_t vision_last_target_time;
 #define AUTO_AIM_HOLD_MS 100U
+#define AUTO_YAW_ERROR_LPF_ALPHA 0.35f
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,
@@ -340,6 +341,8 @@ extern chassis_behaviour_e chassis_behaviour_mode;
 //自瞄模式下对yaw和pitch的控制
 static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal_control_set,c_fbpara_t  *chassis_transmit)
 {
+    static fp32 filtered_yaw_error = 0.0f;
+    static uint8_t yaw_error_filter_inited = 0;
 //	yaw_value = gimbal_control_set->gimbal_yaw_motor.absolute_angle;
 //	pitch_value = gimbal_control_set->gimbal_pitch_motor.absolute_angle;
 //	send_gimbal_angles(1,0.0f,pitch_value,yaw_value);
@@ -409,8 +412,18 @@ static void gimbal_AUTO_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
 
   if(target_time != 0U && target_time != last_consumed_target_time && dt < AUTO_AIM_HOLD_MS)
   {
+    fp32 raw_yaw_error = (fp32)gimbal_control_set->gimbal_AUTO_ctrl->x;
     auto_flag=1;
-    *yaw = (double)gimbal_control_set->gimbal_AUTO_ctrl->x;
+    if (!yaw_error_filter_inited)
+    {
+      filtered_yaw_error = raw_yaw_error;
+      yaw_error_filter_inited = 1;
+    }
+    else
+    {
+      filtered_yaw_error += AUTO_YAW_ERROR_LPF_ALPHA * (raw_yaw_error - filtered_yaw_error);
+    }
+    *yaw = filtered_yaw_error;
     *pitch=-(double)gimbal_control_set->gimbal_AUTO_ctrl->y;
     last_consumed_target_time = target_time;
   }
