@@ -72,6 +72,7 @@ uint8_t fire_mode = 0;
         gimbal_PID_clear(&(gimbal_clear)->gimbal_yaw_motor.gimbal_motor_absolute_angle_pid);   \
         gimbal_PID_clear(&(gimbal_clear)->gimbal_yaw_motor.gimbal_motor_relative_angle_pid);   \
         PID_clear(&(gimbal_clear)->gimbal_yaw_motor.gimbal_motor_gyro_pid);                    \
+        PID_clear(&(gimbal_clear)->gimbal_yaw_motor.gimbal_auto_motor_gyro_pid);               \
                                                                                                \
         gimbal_PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_motor_absolute_angle_pid); \
         gimbal_PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_motor_relative_angle_pid); \
@@ -684,6 +685,8 @@ static void gimbal_init(gimbal_control_t *init)
     static const fp32 Pitch_speed_pid[3] = {PITCH_SPEED_PID_KP, PITCH_SPEED_PID_KI, PITCH_SPEED_PID_KD};
     // yaw的速度环pid
     static const fp32 Yaw_speed_pid[3] = {YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD};
+    // yaw自瞄的速度环pid
+    static const fp32 Yaw_auto_speed_pid[3] = {YAW_AUTO_SPEED_PID_KP, YAW_AUTO_SPEED_PID_KI, YAW_AUTO_SPEED_PID_KD};
     // 电机数据指针获取
     init->gimbal_yaw_motor.gimbal_motor_measure = get_yaw_gimbal_motor_measure_point();
     init->gimbal_pitch_motor.gimbal_motor_measure = get_pitch_gimbal_motor_measure_point();
@@ -730,7 +733,9 @@ static void gimbal_init(gimbal_control_t *init)
     gimbal_PID_init(&init->gimbal_yaw_motor.gimbal_motor_auto_angle_pid, YAW_AUTO_ABSOLUTE_PID_MAX_OUT, YAW_AUTO_ABSOLUTE_PID_MAX_IOUT, YAW_AUTO_ABSOLUTE_PID_KP, YAW_AUTO_ABSOLUTE_PID_KI, YAW_AUTO_ABSOLUTE_PID_KD);
 
     PID_init(&init->gimbal_yaw_motor.gimbal_motor_gyro_pid, PID_POSITION, Yaw_speed_pid, YAW_SPEED_PID_MAX_OUT, YAW_SPEED_PID_MAX_IOUT);
-
+    
+    PID_init(&init->gimbal_yaw_motor.gimbal_auto_motor_gyro_pid, PID_POSITION, Yaw_auto_speed_pid, YAW_AUTO_SPEED_PID_MAX_OUT, YAW_AUTO_SPEED_PID_MAX_IOUT);
+    
     // 初始化pitch电机pid
     gimbal_PID_init(&init->gimbal_pitch_motor.gimbal_motor_absolute_angle_pid, PITCH_GYRO_ABSOLUTE_PID_MAX_OUT, PITCH_GYRO_ABSOLUTE_PID_MAX_IOUT, PITCH_GYRO_ABSOLUTE_PID_KP, PITCH_GYRO_ABSOLUTE_PID_KI, PITCH_GYRO_ABSOLUTE_PID_KD);
     gimbal_PID_init(&init->gimbal_pitch_motor.gimbal_motor_relative_angle_pid, PITCH_ENCODE_RELATIVE_PID_MAX_OUT, PITCH_ENCODE_RELATIVE_PID_MAX_IOUT, PITCH_ENCODE_RELATIVE_PID_KP, PITCH_ENCODE_RELATIVE_PID_KI, PITCH_ENCODE_RELATIVE_PID_KD);
@@ -1163,7 +1168,7 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
     // else
     // {
     gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_low_auto_angle_pid, gimbal_motor->absolute_angle, gimbal_motor->absolute_angle_set, gimbal_motor->motor_gyro);
-    gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
+    gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_auto_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
     // }
     // 控制值赋值
     // gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);

@@ -51,11 +51,21 @@
 // #define YAW_SPEED_PID_KD        0.00f
 // #define YAW_SPEED_PID_MAX_OUT   4.0f
 // #define YAW_SPEED_PID_MAX_IOUT  1.0f   
-#define YAW_SPEED_PID_KP        1.55f
+#define YAW_SPEED_PID_KP        0.45f
 #define YAW_SPEED_PID_KI        0.00f
 #define YAW_SPEED_PID_KD        0.00f
-#define YAW_SPEED_PID_MAX_OUT   5.0f
-#define YAW_SPEED_PID_MAX_IOUT  1.0f  
+#define YAW_SPEED_PID_MAX_OUT   4.0f
+#define YAW_SPEED_PID_MAX_IOUT  1.0f 
+
+//yaw自瞄 速度环 PID参数以及 PID最大输出，积分输出
+#define YAW_AUTO_SPEED_PID_KP        1.55f
+#define YAW_AUTO_SPEED_PID_KI        0.00f
+#define YAW_AUTO_SPEED_PID_KD        0.00f
+#define YAW_AUTO_SPEED_PID_MAX_OUT   5.0f
+#define YAW_AUTO_SPEED_PID_MAX_IOUT  1.0f 
+
+
+
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
 #define YAW_GYRO_ABSOLUTE_PID_KP         18.00f//15
@@ -251,7 +261,7 @@ typedef struct
 	
 	
 	pid_type_def gimbal_motor_gyro_pid;
-
+  pid_type_def gimbal_auto_motor_gyro_pid;
 	
     gimbal_motor_mode_e gimbal_motor_mode;
     gimbal_motor_mode_e last_gimbal_motor_mode;
