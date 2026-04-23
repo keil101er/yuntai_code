@@ -154,3 +154,4 @@ dkms.conf
 # debug information files
 *.dwo
 >>>>>>> 3cf9eeca64769e269d12c2af877fb6d536239f4b
+.omx/

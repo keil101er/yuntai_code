@@ -1410,7 +1410,7 @@ static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_mot
     angle_error = rad_format(gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle);
 
     // 用 IMU 误差修正当前电机角，而不是把 IMU 目标直接当成电机位置发出去
-    pitch_motor_position_set = rad_format(pitch_angle + angle_error + 0.1);
+    pitch_motor_position_set = rad_format(pitch_angle + angle_error + 0.1f);
     gimbal_motor->relative_angle_set = pitch_motor_position_set;
 
     aim_speed = 30.0f * fabs(angle_error) * 0.6f;
@@ -1468,7 +1468,7 @@ static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_mot
     //     aim_speed = 0;
     // }
 
-    // CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, 10);
+    // CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, 3);
 }
 
 // yaw
