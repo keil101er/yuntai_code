@@ -50,8 +50,6 @@
 #define aim_color 0 //      //识别红色是0，蓝色是1
 
 #define aim_color_id (robot_state.robot_id)
-float angle_error;
-float aim_speed;
 fp32 add_yaw_angle = 0.0f;
 fp32 add_pitch_angle = 0.0f;
 extern uint8_t auto_flag;
@@ -77,6 +75,7 @@ uint8_t fire_mode = 0;
         gimbal_PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_motor_absolute_angle_pid); \
         gimbal_PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_motor_relative_angle_pid); \
         PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_motor_gyro_pid);                  \
+        PID_clear(&(gimbal_clear)->gimbal_pitch_motor.gimbal_auto_motor_gyro_pid);             \
     }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -148,6 +147,7 @@ static void gimbal_motor_relative_angle_control(gimbal_motor_t *gimbal_motor);
  * @retval         none
  */
 static void gimbal_motor_raw_angle_control(gimbal_motor_t *gimbal_motor);
+static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor);
 /**
  * @brief          在GIMBAL_MOTOR_GYRO模式，限制角度设定,防止超过最大
  * @param[out]     gimbal_motor:yaw电机或者pitch电机
@@ -213,8 +213,9 @@ static void J_scope_gimbal_test(void);
 gimbal_control_t gimbal_control;
 // motor current
 // 发送的电机电流
-static int16_t pitch_can_set_current = 0, shoot_can_set_current = 0;
+static int16_t shoot_can_set_current = 0;
 fp32 yaw_can_set_current = 0;
+fp32 pitch_can_set_current = 0;
 // 自瞄时 发给nuc的数据
 extern vision_tx_buffer_t auto_to_nuc_data;
 extern int board_receive_data[8];
@@ -223,16 +224,11 @@ extern robot_status_t robot_state;
 extern c_fbpara_t receive_chassis_data;
 
 extern motor_measure_t motor_chassis[9];
-extern motor_measure_t motor_pitch;
-float pitch_angle = 0;
-
 extern shoot_control_t shoot_control; // 射击数据
 extern shoot_data_t shoot_data_t1;
 
 uint16_t gimbal_motor_enable_cnt = 0;
 
-fp32 pitch_motor_auto_position_set;
-fp32 pitch_motor_position_set;
 void gimbal_task(void const *pvParameters)
 {
     // 等待陀螺仪任务更新陀螺仪数据
@@ -298,7 +294,6 @@ void gimbal_task(void const *pvParameters)
         gimbal_feedback_update(&gimbal_control); // 云台数据反馈
 
         gimbal_control.yaw_motor_angle = -motor_ecd_to_angle_change(motor_chassis[4].ecd, 0);
-        pitch_angle = motor_ecd_to_angle_change(motor_pitch.ecd, 0);
         gimbal_set_control(&gimbal_control, &receive_chassis_data); // 设置云台控制量
 
         //****************************************************************************************************************************
@@ -315,18 +310,17 @@ void gimbal_task(void const *pvParameters)
         yaw_can_set_current = gimbal_control.gimbal_yaw_motor.given_current_yaw;
 #endif
 
-#if PITCH_TURN
-#else
-        pitch_can_set_current = gimbal_control.gimbal_pitch_motor.given_current;
-#endif
+        pitch_can_set_current = gimbal_control.gimbal_pitch_motor.current_set +
+                                pitch_static_feedforward(&gimbal_control.gimbal_pitch_motor);
 
         if (receive_chassis_data.mode_flag == 0)
         {
             // CAN_cmd_gimbal(0, 0);
             mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, 0);
             osDelay(2);
-            CAN_cmd_fric(0, 0, 0, 0);
+            mit_ctrl(&hcan2,0x02,0,0,0,0,0);
             osDelay(2);
+            CAN_cmd_fric(0, 0, 0, 0);
         }
         else if (receive_chassis_data.mode_flag == 1 || receive_chassis_data.mode_flag == 2)
         {
@@ -334,6 +328,8 @@ void gimbal_task(void const *pvParameters)
             //				osDelay(2);
             mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, yaw_can_set_current);
             //				mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,0);
+            osDelay(2);
+            mit_ctrl(&hcan2,0x02,0,0,0,0,pitch_can_set_current);
             osDelay(2);
             // 射击标志为 1：启动摩擦轮进行射击
             // Shoot flag is 1: Start friction wheels for shooting
@@ -683,6 +679,8 @@ static void gimbal_init(gimbal_control_t *init)
 {
     // pitch的速度环pid
     static const fp32 Pitch_speed_pid[3] = {PITCH_SPEED_PID_KP, PITCH_SPEED_PID_KI, PITCH_SPEED_PID_KD};
+    // pitch自瞄的速度环pid
+    static const fp32 Pitch_auto_speed_pid[3] = {PITCH_AUTO_SPEED_PID_KP, PITCH_AUTO_SPEED_PID_KI, PITCH_AUTO_SPEED_PID_KD};
     // yaw的速度环pid
     static const fp32 Yaw_speed_pid[3] = {YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD};
     // yaw自瞄的速度环pid
@@ -742,7 +740,8 @@ static void gimbal_init(gimbal_control_t *init)
     gimbal_PID_init(&init->gimbal_pitch_motor.gimbal_motor_auto_angle_pid, PITCH_AUTO_ABSOLUTE_PID_MAX_OUT, PITCH_AUTO_ABSOLUTE_PID_MAX_IOUT, PITCH_AUTO_ABSOLUTE_PID_KP, PITCH_AUTO_ABSOLUTE_PID_KI, PITCH_AUTO_ABSOLUTE_PID_KD);
 
     PID_init(&init->gimbal_pitch_motor.gimbal_motor_gyro_pid, PID_POSITION, Pitch_speed_pid, PITCH_SPEED_PID_MAX_OUT, PITCH_SPEED_PID_MAX_IOUT);
-
+    PID_init(&init->gimbal_pitch_motor.gimbal_auto_motor_gyro_pid, PID_POSITION, Pitch_auto_speed_pid, PITCH_AUTO_SPEED_PID_MAX_OUT, PITCH_AUTO_SPEED_PID_MAX_IOUT);
+    
     // 清除所有PID
     gimbal_total_pid_clear(init);
 
@@ -1223,8 +1222,6 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
 // }
 static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
 {
-    float min_speed = 5.0f;
-
     if (gimbal_motor == NULL)
     {
         return;
@@ -1237,24 +1234,14 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     {
         gimbal_motor->absolute_angle_set = -0.6f;
     }
-    angle_error = rad_format((gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle) * 1.0);
 
-    // 把 IMU pitch 误差转换成电机位置目标，抵消机身俯仰扰动
-    pitch_motor_auto_position_set = rad_format(pitch_angle + angle_error);
-    gimbal_motor->relative_angle_set = pitch_motor_auto_position_set;
-
-    aim_speed =fabs(angle_error)*1.3f;
-
-    if (pitch_motor_auto_position_set > 0.4f)
-    {
-        pitch_motor_auto_position_set = 0.4f;
-    }
-    else if (pitch_motor_auto_position_set < -0.6f)
-    {
-        pitch_motor_auto_position_set = -0.6f;
-    }
-
-    CAN_cmd_4310pitch_pvmode(pitch_motor_auto_position_set,aim_speed);
+    gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_auto_angle_pid,
+                                                   gimbal_motor->absolute_angle,
+                                                   gimbal_motor->absolute_angle_set,
+                                                   gimbal_motor->motor_gyro);
+    gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_auto_motor_gyro_pid,
+                                         gimbal_motor->motor_gyro,
+                                         gimbal_motor->motor_gyro_set);
 }
 
 /**
@@ -1407,68 +1394,14 @@ static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_mot
     {
         gimbal_motor->absolute_angle_set = -0.6f;
     }
-    angle_error = rad_format(gimbal_motor->absolute_angle_set - gimbal_motor->absolute_angle);
 
-    // 用 IMU 误差修正当前电机角，而不是把 IMU 目标直接当成电机位置发出去
-    pitch_motor_position_set = rad_format(pitch_angle + angle_error + 0.1f);
-    gimbal_motor->relative_angle_set = pitch_motor_position_set;
-
-    aim_speed = 30.0f * fabs(angle_error) * 0.6f;
-    if (aim_speed > 30.0f)
-    {
-        aim_speed = 30.0f;
-    }
-    else if (aim_speed < 0.0f)
-    {
-        aim_speed = 0.0f;
-    }
-
-    if (pitch_motor_position_set > 0.4f)
-    {
-        pitch_motor_position_set = 0.4f;
-    }
-    else if (pitch_motor_position_set < -0.6f)
-    {
-        pitch_motor_position_set = -0.6f;
-    }
-
-    CAN_cmd_4310pitch_pvmode(pitch_motor_position_set, 10.0f);
-
-    // if (gimbal_motor == NULL)
-    // {
-    //     return;
-    // }
-    // // 角度环，速度环串级pid调试
-
-    // if (gimbal_motor->absolute_angle_set > 0.22)
-    // {
-    //     gimbal_motor->absolute_angle_set = 0.22;
-    // }
-    // else if (gimbal_motor->absolute_angle_set < -0.4)
-    // {
-    //     gimbal_motor->absolute_angle_set = -0.4;
-    // }
-
-    // // 计算差值
-    // angle_error = gimbal_motor->absolute_angle_set - (-(gimbal_motor->absolute_angle) * 1.09756 + 0.064);
-
-    // // 设置最大速度
-    // float max_speed = 30.0f;
-
-    // // 计算目标速度
-    // aim_speed = max_speed * fabs(angle_error) * 0.6;
-
-    // // 限制目标速度
-    // if (aim_speed > max_speed)
-    // {
-    //     aim_speed = max_speed;
-    // }
-    // else if (aim_speed < 0)
-    // {
-    //     aim_speed = 0;
-    // }
-
-    // CAN_cmd_4310pitch_pvmode(gimbal_motor->absolute_angle_set, 3);
+    gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_absolute_angle_pid,
+                                                   gimbal_motor->absolute_angle,
+                                                   gimbal_motor->absolute_angle_set,
+                                                   gimbal_motor->motor_gyro);
+    gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid,
+                                         gimbal_motor->motor_gyro,
+                                         gimbal_motor->motor_gyro_set);
 }
 
 // yaw
@@ -1532,6 +1465,31 @@ static void gimbal_motor_raw_angle_control(gimbal_motor_t *gimbal_motor)
     }
     gimbal_motor->current_set = gimbal_motor->raw_cmd_current;
     gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
+}
+
+static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor)
+{
+    if (gimbal_motor == NULL)
+    {
+        return 0.0f;
+    }
+
+    if (gimbal_motor->gimbal_motor_mode == GIMBAL_MOTOR_RAW)
+    {
+        return 0.0f;
+    }
+
+    if (gimbal_motor->motor_gyro_set > PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+    {
+        return PITCH_STATIC_FF_POS;
+    }
+
+    if (gimbal_motor->motor_gyro_set < -PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+    {
+        return PITCH_STATIC_FF_NEG;
+    }
+
+    return 0.0f;
 }
 
 #if GIMBAL_TEST_MODE

@@ -266,7 +266,7 @@ void CAN_cmd_4310pitch_pvmode(float pos,float vel)
 void init_gimbalpitch(void)
 {
     uint32_t send_mail_box;
-    gimbal_tx_message.StdId = 0x02+0x100;
+    gimbal_tx_message.StdId = 0x02;
     gimbal_tx_message.IDE = CAN_ID_STD;
     gimbal_tx_message.RTR = CAN_RTR_DATA;
     gimbal_tx_message.DLC = 0x08;
