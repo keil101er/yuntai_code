@@ -328,9 +328,9 @@ void gimbal_task(void const *pvParameters)
             //				osDelay(2);
             mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, yaw_can_set_current);
             //				mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,0);
-            osDelay(2);
+            osDelay(1);
             mit_ctrl(&hcan2,0x02,0,0,0,0,pitch_can_set_current);
-            osDelay(2);
+            osDelay(1);
             // 射击标志为 1：启动摩擦轮进行射击
             // Shoot flag is 1: Start friction wheels for shooting
             if (receive_chassis_data.reserve1 == 1)

@@ -46,29 +46,29 @@
 #define PITCH_SPEED_PID_MAX_IOUT  1.0f
 
 //pitch自瞄的速度环pid
-#define PITCH_AUTO_SPEED_PID_KP        1.2f
+#define PITCH_AUTO_SPEED_PID_KP        0.4f
 #define PITCH_AUTO_SPEED_PID_KI        0.000f
-#define PITCH_AUTO_SPEED_PID_KD        -0.f
+#define PITCH_AUTO_SPEED_PID_KD        -0.0f
 #define PITCH_AUTO_SPEED_PID_MAX_OUT   7.0f
 #define PITCH_AUTO_SPEED_PID_MAX_IOUT  1.0f
 
 // pitch静摩擦前馈，按目标角速度方向分别补偿
 #define PITCH_STATIC_FF_GYRO_SET_THRESHOLD 0.1f
-#define PITCH_STATIC_FF_POS                -0.3f
-#define PITCH_STATIC_FF_NEG                -1.25f
+#define PITCH_STATIC_FF_POS                -0.08f
+#define PITCH_STATIC_FF_NEG                -1.2f
 
 //pitch gyro angle close-loop PID params, max out and max iout
 //pitch 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
 #define PITCH_GYRO_ABSOLUTE_PID_KP 10.0f//15.0f//15
 #define PITCH_GYRO_ABSOLUTE_PID_KI 0.0f
-#define PITCH_GYRO_ABSOLUTE_PID_KD -0.1f//新步兵参数
+#define PITCH_GYRO_ABSOLUTE_PID_KD 0.0f//新步兵参数
 
 #define PITCH_GYRO_ABSOLUTE_PID_MAX_OUT 10.0f
 #define PITCH_GYRO_ABSOLUTE_PID_MAX_IOUT 0.0f
 
 //pitch gyro angle close-loop PID params, max out and max iout
 //pitch 自瞄角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
-#define PITCH_AUTO_ABSOLUTE_PID_KP 18.0f//20
+#define PITCH_AUTO_ABSOLUTE_PID_KP 9.5f//20
 #define PITCH_AUTO_ABSOLUTE_PID_KI 0.0f
 #define PITCH_AUTO_ABSOLUTE_PID_KD 0.0f//新步兵参数
 
@@ -88,7 +88,7 @@
 #define YAW_SPEED_PID_MAX_IOUT  1.0f 
 
 //yaw自瞄 速度环 PID参数以及 PID最大输出，积分输出
-#define YAW_AUTO_SPEED_PID_KP        1.58f
+#define YAW_AUTO_SPEED_PID_KP        1.56f
 #define YAW_AUTO_SPEED_PID_KI        0.00f
 #define YAW_AUTO_SPEED_PID_KD        0.00f
 #define YAW_AUTO_SPEED_PID_MAX_OUT   5.0f
@@ -104,7 +104,7 @@
 
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 自瞄角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
-#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       15.0f
+#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       16.5f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KI       0.0f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KD       -0.1f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_MAX_OUT   10.0f
