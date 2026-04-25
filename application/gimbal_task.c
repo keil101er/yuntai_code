@@ -1488,10 +1488,15 @@ static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor)
         {
             return PITCH_STATIC_FF_NEG;
         }
+        else
+        {
+            return -0.65f;
+        }
+
     }
     else
     {
-        return -0.775f;
+        return -0.65f;
     }
 }
 
