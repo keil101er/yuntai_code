@@ -1478,18 +1478,21 @@ static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor)
     {
         return 0.0f;
     }
-
-    if (gimbal_motor->motor_gyro_set > PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+    if(gimbal_motor->gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
-        return PITCH_STATIC_FF_POS;
+        if (gimbal_motor->motor_gyro_set > PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+        {
+            return PITCH_STATIC_FF_POS;
+        }
+        else if (gimbal_motor->motor_gyro_set < -PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+        {
+            return PITCH_STATIC_FF_NEG;
+        }
     }
-
-    if (gimbal_motor->motor_gyro_set < -PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+    else
     {
-        return PITCH_STATIC_FF_NEG;
+        return -0.775f;
     }
-
-    return 0.0f;
 }
 
 #if GIMBAL_TEST_MODE
