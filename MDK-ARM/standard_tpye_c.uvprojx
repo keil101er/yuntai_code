@@ -708,6 +708,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\ui.c</FilePath>
             </File>
+            <File>
+              <FileName>force_gimbal_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\application\force_gimbal_core.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1122,3 +1127,4 @@
   </LayerInfo>
 
 </Project>
+

@@ -47,6 +47,16 @@
 #include "chassis_task.h"
 #include "CANdata_analysis.h"
 
+
+#include "force_gimbal_core.h"
+#include "arm_math.h"
+
+// 创建力控轴实体和平滑器 (可以放在全局变量区)
+ForceAxis_t yaw_axis;
+TrajectorySmoother_t yaw_smoother;
+ForceAxis_t pitch_axis;
+TrajectorySmoother_t pitch_smoother;
+static uint8_t last_mode_flag = 0;
 #define aim_color 0 //      //识别红色是0，蓝色是1
 
 #define aim_color_id (robot_state.robot_id)
@@ -293,6 +303,14 @@ void gimbal_task(void const *pvParameters)
         // 云台反馈更新
         gimbal_feedback_update(&gimbal_control); // 云台数据反馈
 
+        ForceAxis_UpdateFeedback(&yaw_axis, 
+                         gimbal_control.gimbal_yaw_motor.absolute_angle, 
+                         gimbal_control.gimbal_yaw_motor.motor_gyro);
+        ForceAxis_UpdateFeedback(&pitch_axis, 
+                         gimbal_control.gimbal_pitch_motor.absolute_angle, 
+                         gimbal_control.gimbal_pitch_motor.motor_gyro);
+
+
         gimbal_control.yaw_motor_angle = -motor_ecd_to_angle_change(motor_chassis[4].ecd, 0);
         gimbal_set_control(&gimbal_control, &receive_chassis_data); // 设置云台控制量
 
@@ -304,14 +322,14 @@ void gimbal_task(void const *pvParameters)
 
         //        shoot_can_set_current =  shoot_control_loop();       //射击任务控制循环
 
-#if YAW_TURN
-        yaw_can_set_current = -gimbal_control.gimbal_yaw_motor.given_current;
-#else
-        yaw_can_set_current = gimbal_control.gimbal_yaw_motor.given_current_yaw;
-#endif
+// #if YAW_TURN
+//         yaw_can_set_current = -gimbal_control.gimbal_yaw_motor.given_current;
+// #else
+//         yaw_can_set_current = gimbal_control.gimbal_yaw_motor.given_current_yaw;
+// #endif
 
-        pitch_can_set_current = gimbal_control.gimbal_pitch_motor.current_set +
-                                pitch_static_feedforward(&gimbal_control.gimbal_pitch_motor);
+//         pitch_can_set_current = gimbal_control.gimbal_pitch_motor.current_set +
+//                                 pitch_static_feedforward(&gimbal_control.gimbal_pitch_motor);
 
         if (receive_chassis_data.mode_flag == 0)
         {
@@ -326,11 +344,13 @@ void gimbal_task(void const *pvParameters)
         {
             //              CAN_cmd_gimbal(shoot_can_set_current,0);
             //				osDelay(2);
-            mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, yaw_can_set_current);
-            //				mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,0);
-            osDelay(1);
-            mit_ctrl(&hcan2,0x02,0,0,0,0,pitch_can_set_current);
-            osDelay(1);
+            // mit_ctrl(&hcan1, 0x07, 0, 0, 0, 0, yaw_can_set_current);
+            // //				mit_ctrl(&hcan1,0x07, 0, 0, 0, 0,0);
+            // osDelay(1);
+            // mit_ctrl(&hcan2,0x02,0,0,0,0,pitch_can_set_current);
+            // osDelay(1);
+            mit_ctrl(&hcan1, 0x07, 0.0f, 0.0f, 0.0f, 0.0f, yaw_can_set_current);
+            mit_ctrl(&hcan2, 0x02, 0.0f, 0.0f, 0.0f, 0.0f, pitch_can_set_current);
             // 射击标志为 1：启动摩擦轮进行射击
             // Shoot flag is 1: Start friction wheels for shooting
             if (receive_chassis_data.reserve1 == 1)
@@ -401,7 +421,6 @@ void gimbal_task(void const *pvParameters)
                 }
             }
         }
-
 #if GIMBAL_TEST_MODE
         J_scope_gimbal_test();
 #endif
@@ -754,6 +773,34 @@ static void gimbal_init(gimbal_control_t *init)
     init->gimbal_pitch_motor.absolute_angle_set = init->gimbal_pitch_motor.absolute_angle;
     init->gimbal_pitch_motor.relative_angle_set = init->gimbal_pitch_motor.relative_angle;
     init->gimbal_pitch_motor.motor_gyro_set = init->gimbal_pitch_motor.motor_gyro;
+    // 1. 初始化 Yaw 轴力控引擎 (直接使用你测出的极品参数：J=0.003974, B=0.06431)
+    // 注意：库伦摩擦 C (0.085531) 已经打了 6 折防止静止高频滋滋声
+    ForceAxis_Init(&yaw_axis, MOTOR_TYPE_DM_MIT, 1.0f, 
+                0.003f,             // J: 转动惯量//0.003974
+                0.04f,             // B: 粘滞摩擦//0.064310
+                0.085531f * 0.6f,      // C: 库伦摩擦
+                0.0f, 0.0f);           // G_cos, G_sin (Yaw轴无重力)
+
+    // 2. 注入极其硬朗的 PID (完全接管原来的串级 PID)
+    ForceAxis_SetPID(&yaw_axis, 
+                    0.0f, 0.0f, 0.0f,  // 暴躁的位置环 Kp//14 1.55
+                    0.0f,  0.0f, 0.0f); // 强有力的速度环 Kp
+    // 3. 初始化平滑器 (必须给 dt 赋值，否则物理引擎时间静止！)
+    Smoother_Init(&yaw_smoother, 25.0f, 1.0f, 0.001f);
+
+    ForceAxis_Init(&pitch_axis, MOTOR_TYPE_DM_MIT, 1.0f, 
+                0.001f,   // J  //0.001
+                0.02f,    // B  //0.05
+                0.0f,    // C  //0.02
+                -0.5f,     // G_cos (重力前馈，极度重要)
+                0.0f);    // G_sin
+                
+    // 注入保守的 Pitch PID (防止上电疯转)
+    ForceAxis_SetPID(&pitch_axis, 
+                    0.0f, 0.0f, 0.0f,  // 偏软的位置环 Kp //9.5
+                    0.0f,  0.0f, 0.0f); // 偏软的速度环 Kp  //0.55
+
+    Smoother_Init(&pitch_smoother, 40.0f, 1.0f, 0.001f);
 }
 /**
  * @brief          设置云台控制模式，主要在'gimbal_behaviour_mode_set'函数中改变
@@ -918,20 +965,27 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd)
  */
 static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_change)
 {
-    if (gimbal_mode_change == NULL)
-    {
-        return;
-    }
-    // yaw电机状态机切换保存数据
-    // 上一次的yaw电机模式不等于电机原始值设置 并且 这一次等于 电机原始值设置
+    if (gimbal_mode_change == NULL) return;
+
+    // =========================================================================
+    //  Yaw 轴状态切换对齐 (防抽搐/防转圈)
+    // =========================================================================
     if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_RAW && gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
     {
-        // 电机原始值设置 的电流值等于
-        gimbal_mode_change->gimbal_yaw_motor.raw_cmd_current = gimbal_mode_change->gimbal_yaw_motor.current_set = gimbal_mode_change->gimbal_yaw_motor.given_current; //
+        gimbal_mode_change->gimbal_yaw_motor.raw_cmd_current = gimbal_mode_change->gimbal_yaw_motor.current_set = gimbal_mode_change->gimbal_yaw_motor.given_current;
     }
-    else if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_GYRO && gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO)
+    //  核心修复：无论是切入 GYRO(遥控) 还是 AUTO(自瞄)，只要是从别的模式切过来，就必须对齐物理平滑器！
+    else if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode &&
+             (gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO || gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO))
     {
+        // 目标角度对齐当前物理角度
         gimbal_mode_change->gimbal_yaw_motor.absolute_angle_set = gimbal_mode_change->gimbal_yaw_motor.absolute_angle;
+        
+        // 平滑器引擎无缝接管 (继承当前角度和物理速度，防止回零转圈！)
+        yaw_smoother.target_pos = gimbal_mode_change->gimbal_yaw_motor.absolute_angle;
+        yaw_smoother.out_pos    = gimbal_mode_change->gimbal_yaw_motor.absolute_angle;
+        yaw_smoother.out_vel    = gimbal_mode_change->gimbal_yaw_motor.motor_gyro; 
+        yaw_smoother.out_acc    = 0.0f;
     }
     else if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCONDE && gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
     {
@@ -939,29 +993,32 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_cha
     }
     gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode = gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode;
 
-    // pitch电机状态机切换保存数据,PITCH新电机是位置速度控制模式，和之前存储会有区别
+    // =========================================================================
+    //  Pitch 轴状态切换对齐 (防砸地/防转圈)
+    // =========================================================================
     if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_RAW && gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
     {
         gimbal_mode_change->gimbal_pitch_motor.raw_cmd_current = gimbal_mode_change->gimbal_pitch_motor.current_set = gimbal_mode_change->gimbal_pitch_motor.given_current;
     }
-    //***************************************************************************************************************
-    else if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_GYRO && gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO)
+    //  核心修复：无论是切入 GYRO(遥控) 还是 AUTO(自瞄)，只要是从别的模式切过来，就必须对齐物理平滑器！
+    else if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode &&
+             (gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO || gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO))
     {
-        gimbal_mode_change->pitch_transition_start_angle = gimbal_mode_change->gimbal_pitch_motor.absolute_angle;
-        gimbal_mode_change->pitch_transition_target_angle = gimbal_mode_change->gimbal_pitch_motor.absolute_angle_set;
-        gimbal_mode_change->pitch_transition_start_time = osKernelSysTick();
-        gimbal_mode_change->pitch_transition_duration = 1; // 过渡时间，单位ms   理论越小越好
-        gimbal_mode_change->pitch_in_transition = 1;
+        // 目标角度对齐当前物理角度
+        gimbal_mode_change->gimbal_pitch_motor.absolute_angle_set = gimbal_mode_change->gimbal_pitch_motor.absolute_angle;
+        
+        // 平滑器引擎无缝接管 (继承当前角度和物理速度，防止回零砸地！)
+        pitch_smoother.target_pos = gimbal_mode_change->gimbal_pitch_motor.absolute_angle;
+        pitch_smoother.out_pos    = gimbal_mode_change->gimbal_pitch_motor.absolute_angle;
+        pitch_smoother.out_vel    = gimbal_mode_change->gimbal_pitch_motor.motor_gyro;
+        pitch_smoother.out_acc    = 0.0f;
     }
-    //*************************************************************************
     else if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCONDE && gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
     {
         gimbal_mode_change->gimbal_pitch_motor.relative_angle_set = gimbal_mode_change->gimbal_pitch_motor.relative_angle;
     }
-
     gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode = gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode;
 }
-
 /**
  * @brief          设置云台控制设定值，控制值是通过gimbal_behaviour_control_set函数设置的
  * @param[out]     gimbal_set_control:"gimbal_control"变量指针.
@@ -1274,62 +1331,156 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         }
         CAN_gimbal_send__to_chassis(&hcan1, fire_mode);
     }
+    // // yaw轴控制
+    // if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
+    // {
+    //     gimbal_motor_raw_angle_control(&control_loop->gimbal_yaw_motor);
+    // }
+    // else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO) // juedui
+    // {
+    //     gimbal_motor_absolute_angle_control(&control_loop->gimbal_yaw_motor);
+    // }
+    // else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE) // xiangdui
+    // {
+    //     gimbal_motor_relative_angle_control(&control_loop->gimbal_yaw_motor);
+    // }
+    // else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
+    // {
+    //     gimbal_motor_auto_angle_control(&control_loop->gimbal_yaw_motor);
+    // }
     // yaw轴控制
     if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
     {
         gimbal_motor_raw_angle_control(&control_loop->gimbal_yaw_motor);
     }
-    else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO) // juedui
-    {
-        gimbal_motor_absolute_angle_control(&control_loop->gimbal_yaw_motor);
-    }
     else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE) // xiangdui
     {
         gimbal_motor_relative_angle_control(&control_loop->gimbal_yaw_motor);
     }
-    else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
+    else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO || 
+        control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
-        gimbal_motor_auto_angle_control(&control_loop->gimbal_yaw_motor);
+        // 1. 获取目标并处理 -PI 到 PI 的跳变 (防原点疯甩的核心！)
+        float raw_target = control_loop->gimbal_yaw_motor.absolute_angle_set;
+        float error_to_target = rad_format(raw_target - yaw_smoother.out_pos);
+        float continuous_target = yaw_smoother.out_pos + error_to_target;
+
+        // 2. 目标平滑处理
+        if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO) {
+            yaw_smoother.w_n = 40.0f; 
+        } else {
+            yaw_smoother.w_n = 30.0f; 
+        }
+        Smoother_Update(&yaw_smoother, continuous_target);
+
+        if (yaw_smoother.out_acc > 80.0f) yaw_smoother.out_acc = 80.0f;
+        if (yaw_smoother.out_acc < -80.0f) yaw_smoother.out_acc = -80.0f;
+
+        // 3. 产出极其纯净的物理前馈力矩 (因为 Kp=0)
+        ForceAxis_SetTarget(&yaw_axis, yaw_smoother.out_pos, yaw_smoother.out_vel, yaw_smoother.out_acc);
+        ForceAxis_Calc(&yaw_axis, MODE_COMPETITION, HAL_GetTick() / 1000.0f);
+        
+        // 4. 🎯 在 STM32 里手搓完美的 IMU 坐标系 PD 闭环！
+        float error_pos = rad_format(yaw_smoother.out_pos - control_loop->gimbal_yaw_motor.absolute_angle);
+        float error_vel = yaw_smoother.out_vel - control_loop->gimbal_yaw_motor.motor_gyro;
+
+        float Kp = 14.0f;  // 你测好的暴躁位置环 Kp
+        float Kd = 1.7f;  // 你测好的强力速度环 Kd (避震)
+        float pid_torque = (Kp * error_pos) + (Kd * error_vel);
+
+        // 5. 最终下发力矩 = 闭环修正 + 物理前馈
+        //control_loop->gimbal_yaw_motor.given_current_yaw = pid_torque + yaw_axis.total_torque; 
+        yaw_can_set_current = (pid_torque + yaw_axis.total_torque);
     }
 
-    // pitch轴控制
-    // Pitch 轴平滑过渡（位置插值/轨迹规划）控制，防止角度突变导致机械冲击
-    if (control_loop->pitch_in_transition) // 如果正在过渡状态
-    {
-        uint32_t current_time = osKernelSysTick();                                        // 获取当前系统时间
-        uint32_t elapsed_time = current_time - control_loop->pitch_transition_start_time; // 计算已经过去的时间
-        if (elapsed_time < control_loop->pitch_transition_duration)                       // 如果还没到设定的总过渡时间
-        {
-            // 计算进度比例 (0.0 ~ 1.0)
-            fp32 progress = (fp32)elapsed_time / control_loop->pitch_transition_duration;
-            // 线性插值计算当前的中间目标角度：当前角度 = 起点角度 + 进度 * (终点角度 - 起点角度)
-            control_loop->gimbal_pitch_motor.absolute_angle_set = control_loop->pitch_transition_start_angle + progress * (control_loop->pitch_transition_target_angle - control_loop->pitch_transition_start_angle);
-        }
-        else // 如果过渡时间已经结束
-        {
-            // 强制设为最终目标角度
-            control_loop->gimbal_pitch_motor.absolute_angle_set = control_loop->pitch_transition_target_angle;
-            // 结束过渡状态
-            control_loop->pitch_in_transition = 0;
-        }
-    }
+    // // pitch轴控制
+    // // Pitch 轴平滑过渡（位置插值/轨迹规划）控制，防止角度突变导致机械冲击
+    // if (control_loop->pitch_in_transition) // 如果正在过渡状态
+    // {
+    //     uint32_t current_time = osKernelSysTick();                                        // 获取当前系统时间
+    //     uint32_t elapsed_time = current_time - control_loop->pitch_transition_start_time; // 计算已经过去的时间
+    //     if (elapsed_time < control_loop->pitch_transition_duration)                       // 如果还没到设定的总过渡时间
+    //     {
+    //         // 计算进度比例 (0.0 ~ 1.0)
+    //         fp32 progress = (fp32)elapsed_time / control_loop->pitch_transition_duration;
+    //         // 线性插值计算当前的中间目标角度：当前角度 = 起点角度 + 进度 * (终点角度 - 起点角度)
+    //         control_loop->gimbal_pitch_motor.absolute_angle_set = control_loop->pitch_transition_start_angle + progress * (control_loop->pitch_transition_target_angle - control_loop->pitch_transition_start_angle);
+    //     }
+    //     else // 如果过渡时间已经结束
+    //     {
+    //         // 强制设为最终目标角度
+    //         control_loop->gimbal_pitch_motor.absolute_angle_set = control_loop->pitch_transition_target_angle;
+    //         // 结束过渡状态
+    //         control_loop->pitch_in_transition = 0;
+    //     }
+    // }
 
+    // if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
+    // {
+    //     gimbal_motor_raw_angle_control(&control_loop->gimbal_pitch_motor);
+    // }
+    // else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO)
+    // {
+    //     gimbal_motor_absolute_angle_control_pitch(&control_loop->gimbal_pitch_motor);
+    // }
+    // else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    // {
+    //     gimbal_motor_relative_angle_control(&control_loop->gimbal_pitch_motor);
+    // }
+    // else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
+    // {
+    //     gimbal_motor_auto_angle_control_pitch(&control_loop->gimbal_pitch_motor);
+    // }
     if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
     {
         gimbal_motor_raw_angle_control(&control_loop->gimbal_pitch_motor);
     }
-    else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_GYRO)
+    else 
     {
-        gimbal_motor_absolute_angle_control_pitch(&control_loop->gimbal_pitch_motor);
+        // 1. 跳变处理
+        float raw_target_pitch = control_loop->gimbal_pitch_motor.absolute_angle_set;
+        float error_to_target_pitch = rad_format(raw_target_pitch - pitch_smoother.out_pos);
+        float continuous_target_pitch = pitch_smoother.out_pos + error_to_target_pitch;
+        
+        if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO) {
+            pitch_smoother.w_n = 40.0f; 
+        } else {
+            pitch_smoother.w_n = 30.0f; 
+        }
+
+        // 2. 目标平滑处理
+        Smoother_Update(&pitch_smoother, continuous_target_pitch);
+        if (pitch_smoother.out_acc > 80.0f) pitch_smoother.out_acc = 80.0f;
+        if (pitch_smoother.out_acc < -80.0f) pitch_smoother.out_acc = -80.0f;
+
+        // 3. 计算前馈
+        ForceAxis_SetTarget(&pitch_axis, pitch_smoother.out_pos, pitch_smoother.out_vel, pitch_smoother.out_acc);
+        ForceAxis_Calc(&pitch_axis, MODE_COMPETITION, HAL_GetTick() / 1000.0f);//WORK_MODE
+        
+        // 4. 手搓 Pitch 坐标系闭环
+        float error_pos_pitch = rad_format(pitch_smoother.out_pos - control_loop->gimbal_pitch_motor.absolute_angle);
+        float error_vel_pitch = pitch_smoother.out_vel - control_loop->gimbal_pitch_motor.motor_gyro;
+
+        float stiction_torque = 0.0f;
+        float deadband = 0.002f;  // 极小的死区（约 0.1度），防止在原点高频发抖
+        
+        if (error_pos_pitch > deadband) {
+            // 目标在上方，直接给 0.4Nm 踹开向上的摩擦力！
+            stiction_torque = 0.4f; 
+        } else if (error_pos_pitch < -deadband) {
+            // 目标在下方，直接给 -0.4Nm 踹开向下的摩擦力！
+            stiction_torque = -0.4f;
+        }
+        
+        float Kp_pitch = 9.5f;   // 你之前写的保命位置环 Kp
+        float Kd_pitch = 0.55f;  // 你之前写的保命速度环 Kd
+         float pid_torque_pitch = (Kp_pitch * error_pos_pitch) + (Kd_pitch * error_vel_pitch)+ stiction_torque;
+    
+        // 5. 最终下发力矩
+        // control_loop->gimbal_pitch_motor.given_current = pid_torque_pitch + pitch_axis.total_torque; 
+        pitch_can_set_current = (pid_torque_pitch + pitch_axis.total_torque);
     }
-    else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
-    {
-        gimbal_motor_relative_angle_control(&control_loop->gimbal_pitch_motor);
-    }
-    else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
-    {
-        gimbal_motor_auto_angle_control_pitch(&control_loop->gimbal_pitch_motor);
-    }
+
 }
 
 /**
