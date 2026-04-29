@@ -5,6 +5,8 @@
 #include "string.h"
 #define BUFLENGTH  		128//最大接收的数据
 #define DATELENGTH		16//有效数据
+#define VISION_RX_FRAME_LENGTH 29
+#define VISION_TX_FRAME_LENGTH 43
 
 #define PITCH_AUTO_SEN    0.017f                            //
 #define YAW_AUTO_SEN  0.031f                                //0.021f  
@@ -12,15 +14,39 @@
 
 
 
+#pragma pack(push, 1)
+typedef struct
+{
+    uint8_t head[2];
+    uint8_t mode;
+    float yaw;
+    float yaw_vel;
+    float yaw_acc;
+    float pitch;
+    float pitch_vel;
+    float pitch_acc;
+    uint8_t tail[2];
+} vision_rx_frame_t;
+#pragma pack(pop)
+typedef char vision_rx_frame_size_check[(sizeof(vision_rx_frame_t) == VISION_RX_FRAME_LENGTH) ? 1 : -1];
+
 typedef struct
 {
   uint8_t FRAME_HEADER ; 
+  uint8_t FRAME_HEADER_2;
   uint8_t mode;
   float x; 
   float y;
+  float yaw;
+  float yaw_vel;
+  float yaw_acc;
+  float pitch;
+  float pitch_vel;
+  float pitch_acc;
   float distance; 
   uint8_t blank;               //空白帧，视觉要不要校验
   uint8_t FRAME_TAIL ;         //帧尾
+  uint8_t FRAME_TAIL_2;
 } CTRL;
 
 typedef __packed struct
@@ -53,7 +79,7 @@ typedef struct//发送数据
 typedef union//接收数据
 {
 	CTRL Rec;
-	uint8_t buf[DATELENGTH];
+	uint8_t buf[sizeof(CTRL)];
 }BUF;
 
 typedef struct//发送比赛状态
@@ -80,9 +106,8 @@ extern CTRL *get_AUTO_control_point(void);
 extern volatile uint32_t vision_last_target_time;
 extern void memory_from_buffer(uint8_t *buffer, CTRL *ctrl);
 extern void USART1_IDLE_Handler(void);
+extern void USB_CDC_ProcessReceived(uint8_t *buf, uint32_t len);
 extern void vision_try_transmit(void);
-
-#define VISION_TX_FRAME_LENGTH 43
 
 #pragma pack(push, 1)
 typedef struct

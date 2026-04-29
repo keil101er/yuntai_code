@@ -59,6 +59,7 @@
 "standard_tpye_c\servo_task.o"
 "standard_tpye_c\autogimbal.o"
 "standard_tpye_c\ui.o"
+"standard_tpye_c\force_gimbal_core.o"
 "standard_tpye_c\oled.o"
 "standard_tpye_c\bmi088driver.o"
 "standard_tpye_c\bmi088middleware.o"

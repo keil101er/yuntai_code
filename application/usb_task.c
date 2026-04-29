@@ -38,7 +38,6 @@ const error_t *error_list_usb_local;
 
 void usb_task(void const * argument)
 {
-    MX_USB_DEVICE_Init();
     error_list_usb_local = get_error_list_point();
 
 

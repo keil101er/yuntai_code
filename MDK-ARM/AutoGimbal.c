@@ -1,186 +1,7 @@
 #include "AutoGimbal.h"
-#if 0
-#include "referee.h"
-#include "main.h"
-#include "string.h"
-#include "stdio.h"
-#include "gimbal_task.h"
-#define pi 3.1415
-extern UART_HandleTypeDef huart1;
-extern DMA_HandleTypeDef hdma_usart1_rx;
-extern float pitch_angle;
-extern gimbal_control_t gimbal_control;
-/* Double buffer for ping-pong DMA reception, minimizes dead time */
-/* 双缓冲区乒乓接收，最小化DMA空窗期 */
-static uint8_t sbus_rx_double_buf[2][BUFLENGTH];
-static uint8_t rx_buf_idx = 0;
-
-uint8_t tx[2]={0,1};
-BUF  RresPi;
-TX_GAME game_date;//比赛时间数据
-TX_DATE gimbaler_date;
-TX_AUTO_AIM auto_to_nuc_data;
-uint8_t data_length=0;
-char txmessage[] = "";
-void  AUTO_control_init(void)   //初始化是只在接收到nuc传来的数据后进行，所以调试要先让nuc发数据
-{
-		__HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);//使能串口空闲中断（两次消息的间隙会触发）
-		rx_buf_idx = 0;
-		HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
-}
- //按字节顺序存储接收到的数据
-void memory_from_buffer(uint8_t *buffer, CTRL *ctrl)
-	{
-    ctrl->FRAME_HEADER = buffer[0];
-	//需要的部分
-    memcpy(&ctrl->mode ,&buffer[1],1);
-    memcpy(&ctrl->y, &buffer[2], 4);
-    memcpy(&ctrl->x, &buffer[2 + 4], 4);
-    memcpy(&ctrl->distance, &buffer[2 + 2 * 4], 4);
-	// 获取 yaw 电机的指针
-    const gimbal_motor_t *yaw_motor = get_yaw_motor_point();
-    const gimbal_motor_t *pitch_motor = get_pitch_motor_point();
-    static float last_x;
-	static float last_y;
-	// 检查自瞄数据的有效性
-    // if (ctrl->x == 0 && ctrl->y == 0)
-    // {
-    //     // 如果没有识别到目标，保持上一次的目标位置
-    //     ctrl->x = last_x;
-    //     ctrl->y = last_y;
-    // }
-    // else
-    // {
-    //     // 更新上一次的目标位置
-    //     last_x = ctrl->x - yaw_motor->absolute_angle +0.02;
-    //     last_y = ctrl->y - ((-pitch_motor->absolute_angle)-0.2759)*1.3492;
-    // }
-	// if (ctrl->x != 0 || ctrl->y != 0)
-	// {
-	// 	ctrl->x = ctrl->x - yaw_motor->absolute_angle ;
-	// 	ctrl->y = ctrl->y - ((-pitch_motor->absolute_angle)-0.2759)*1.3492;      //存在等比例换算关系
-	// }
-	// else
-	// {
-	// 	ctrl->x = 0;
-    // 	ctrl->y = 0;
-	// }
-	// 没识别到目标（x==0 && y==0），保持上次的增量
-    // if (ctrl->x == 0 && ctrl->y == 0)
-    // {
-	// 	if(last_x==0&&last_y==0)
-	// 	{
-	// 		last_x=gimbal_control.gimbal_yaw_motor.absolute_angle;
-	// 		last_y=gimbal_control.gimbal_pitch_motor.absolute_angle;	
-	// 	}
-    //     ctrl->x = last_x;
-    //     ctrl->y = last_y;
-    // }
-    // else
-    // {
-    //     // 有目标，保存原始增量值
-    //     last_x = ctrl->x;
-    //     last_y = ctrl->y;
-    // }
-    ctrl->blank = buffer[2 + 3 * sizeof(float)];
-    ctrl->FRAME_TAIL = buffer[2 + 3 * sizeof(float) + 1];
-}
-void Usart1Receive_IDLE(void)  //接收任务，是串口接收中断里的 ，接收到nuc的数据之后
-{
-	/* ==== Step 1: Only abort RX DMA, preserve ongoing TX DMA ==== */
-	/* ==== 第1步：仅停止接收DMA，保留正在进行的发送DMA ==== */
-	/* NOTE: HAL_UART_DMAStop() would kill TX too, causing garbled responses */
-	/* 注意：HAL_UART_DMAStop()会同时杀掉TX，导致响应数据残缺 */
-	HAL_UART_AbortReceive(&huart1);
-
-	data_length = BUFLENGTH - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
-
-	/* ==== Step 2: Save current buffer pointer, switch to other buffer ==== */
-	/* ==== 第2步：保存当前缓冲区指针，切换到另一个缓冲区 ==== */
-	uint8_t *process_buf = sbus_rx_double_buf[rx_buf_idx];
-	rx_buf_idx ^= 1;  // Toggle buffer index / 切换缓冲区索引
-
-	/* ==== Step 3: Restart DMA ASAP to minimize dead time ==== */
-	/* ==== 第3步：尽快重启DMA以最小化数据丢失窗口 ==== */
-	/* DMA is now receiving into the OTHER buffer while we process */
-	/* 现在DMA往另一个缓冲区接收，我们处理当前缓冲区 */
-	HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
-
-	/* ==== Step 4: Process data (DMA is already running again) ==== */
-	/* ==== 第4步：处理数据（DMA已经重新运行了） ==== */
-	if (data_length >= DATELENGTH) {
-		/* Search for valid frame(s) - handles concatenated packets */
-		/* 搜索有效帧 - 处理粘包（两帧合并到达）的情况 */
-		uint16_t i;
-		for (i = 0; i <= data_length - DATELENGTH; i++) {
-			if (process_buf[i] == 0xFF && process_buf[i + DATELENGTH - 1] == 0x0D) 
-			{
-				memory_from_buffer(&process_buf[i], &RresPi.Rec);
-				i += DATELENGTH - 1; // Skip past this frame / 跳过已解析的帧
-			}
-		}
-		/* Send response only if TX DMA is idle (avoid aborting previous TX) */
-		/* 仅在发送空闲时回复（避免打断上一次发送） */
-		if (huart1.gState == HAL_UART_STATE_READY) {
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)&auto_to_nuc_data.AUTO_SEND_TO_NUC_DATA, 16);
-		}
-	}
-}
-
-
-
-void USART1_IDLE_Handler(void)   //串口接收中断
-{
-	if(RESET != __HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))   //判断IDLE寄存器是否空闲
-	{
-			__HAL_UART_CLEAR_IDLEFLAG(&huart1);   //清除标志位                 
-			Usart1Receive_IDLE();                          
-	}
-}
-
-
-CTRL *get_AUTO_control_point(void)
-{ 
-	return &RresPi.Rec;
-}
-
-
-
-
-// void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)//发送回调函数
-// {
-// 	//**********************************************************************************
-// 	if(huart->Instance==USART1)
-// 	{
-// 		memset(gimbaler_date.rx_date,0,20);
-// 	}
-// }
-
-
-
-	
-#endif
-
-extern UART_HandleTypeDef huart1;
-extern DMA_HandleTypeDef hdma_usart1_rx;
-
-#define VISION_RX_FRAME_LENGTH 29
-
-#pragma pack(push, 1)
+#include "usbd_cdc_if.h"
+#include "usb_task.h"
 volatile uint32_t vision_last_target_time = 0;
-typedef struct
-{
-    uint8_t head[2];
-    uint8_t mode;
-    float yaw;
-    float yaw_vel;
-    float yaw_acc;
-    float pitch;
-    float pitch_vel;
-    float pitch_acc;
-    uint8_t tail[2];
-} vision_rx_frame_t;
-#pragma pack(pop)
 
 typedef union
 {
@@ -188,82 +9,112 @@ typedef union
     uint8_t raw[VISION_RX_FRAME_LENGTH];
 } vision_rx_buffer_t;
 
-static uint8_t sbus_rx_double_buf[2][BUFLENGTH];
-static uint8_t usart1_tx_dma_buf[VISION_TX_FRAME_LENGTH];
-static uint8_t rx_buf_idx = 0;
 static vision_rx_buffer_t vision_rx_data;
 static BUF RresPi;
+static uint8_t vision_tx_buffer[VISION_TX_FRAME_LENGTH];
 
 vision_tx_buffer_t auto_to_nuc_data;
-uint8_t data_length = 0;
+extern USBD_HandleTypeDef hUsbDeviceFS;
 
 void vision_try_transmit(void)
 {
-    if (huart1.gState == HAL_UART_STATE_READY)
-    {
-        memcpy(usart1_tx_dma_buf, auto_to_nuc_data.raw, sizeof(usart1_tx_dma_buf));
-        HAL_UART_Transmit_DMA(&huart1, usart1_tx_dma_buf, sizeof(usart1_tx_dma_buf));
-    }
-}
+    USBD_CDC_HandleTypeDef *hcdc;
 
-void AUTO_control_init(void)
-{
-    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    rx_buf_idx = 0;
-    vision_last_target_time = 0;
-    RresPi.Rec.mode = 0;
-    RresPi.Rec.x = 0.0f;
-    RresPi.Rec.y = 0.0f;
-    RresPi.Rec.distance = -1.0f;
-    HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
-    vision_try_transmit();
-}
-
-static void vision_memory_from_buffer(uint8_t *buffer, vision_rx_frame_t *ctrl)
-{
-    memcpy(ctrl, buffer, sizeof(*ctrl));
-}
-
-void memory_from_buffer(uint8_t *buffer, CTRL *ctrl)
-{
-    memcpy(ctrl, buffer, sizeof(*ctrl));
-}
-
-static void Usart1Receive_IDLE(void)
-{
-    uint8_t *process_buf;
-    uint8_t frame_received = 0;
-    uint16_t i;
-
-    HAL_UART_AbortReceive(&huart1);
-
-    data_length = BUFLENGTH - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
-    process_buf = sbus_rx_double_buf[rx_buf_idx];
-    rx_buf_idx ^= 1;
-
-    HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
-
-    if (data_length < VISION_RX_FRAME_LENGTH)
+    if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED || hUsbDeviceFS.pClassData == NULL)
     {
         return;
     }
 
-    for (i = 0; i + VISION_RX_FRAME_LENGTH <= data_length; i++)
+    hcdc = (USBD_CDC_HandleTypeDef *)hUsbDeviceFS.pClassData;
+    if (hcdc->TxState != 0U)
     {
-        if (process_buf[i] == 0x5A &&
-            process_buf[i + 1] == 0xA5 &&
-            process_buf[i + VISION_RX_FRAME_LENGTH - 2] == 0x7F &&
-            process_buf[i + VISION_RX_FRAME_LENGTH - 1] == 0xFE)
+        return;
+    }
+
+    memcpy(vision_tx_buffer, auto_to_nuc_data.raw, sizeof(vision_tx_buffer));
+    (void)CDC_Transmit_FS(vision_tx_buffer, sizeof(vision_tx_buffer));
+}
+
+void AUTO_control_init(void)
+{
+    MX_USB_DEVICE_Init();
+    vision_last_target_time = 0;
+    memset(&RresPi, 0, sizeof(RresPi));
+    memset(&vision_rx_data, 0, sizeof(vision_rx_data));
+    RresPi.Rec.mode = 0;
+    RresPi.Rec.x = 0.0f;
+    RresPi.Rec.y = 0.0f;
+    RresPi.Rec.yaw = 0.0f;
+    RresPi.Rec.yaw_vel = 0.0f;
+    RresPi.Rec.yaw_acc = 0.0f;
+    RresPi.Rec.pitch = 0.0f;
+    RresPi.Rec.pitch_vel = 0.0f;
+    RresPi.Rec.pitch_acc = 0.0f;
+    RresPi.Rec.distance = -1.0f;
+}
+
+static void vision_memory_from_buffer(const uint8_t *buffer, vision_rx_frame_t *ctrl)
+{
+    memcpy(ctrl, buffer, sizeof(*ctrl));
+}
+
+static void vision_update_ctrl_from_frame(const vision_rx_frame_t *frame, CTRL *ctrl);
+
+void memory_from_buffer(uint8_t *buffer, CTRL *ctrl)
+{
+    if (buffer == NULL || ctrl == NULL)
+    {
+        return;
+    }
+
+    vision_memory_from_buffer(buffer, &vision_rx_data.frame);
+    vision_update_ctrl_from_frame(&vision_rx_data.frame, ctrl);
+}
+
+static void vision_update_ctrl_from_frame(const vision_rx_frame_t *frame, CTRL *ctrl)
+{
+    if (frame == NULL || ctrl == NULL)
+    {
+        return;
+    }
+
+    ctrl->FRAME_HEADER = frame->head[0];
+    ctrl->FRAME_HEADER_2 = frame->head[1];
+    ctrl->mode = frame->mode;
+    ctrl->x = frame->yaw;
+    ctrl->y = -frame->pitch;
+    ctrl->yaw = frame->yaw;
+    ctrl->yaw_vel = frame->yaw_vel;
+    ctrl->yaw_acc = frame->yaw_acc;
+    ctrl->pitch = frame->pitch;
+    ctrl->pitch_vel = frame->pitch_vel;
+    ctrl->pitch_acc = frame->pitch_acc;
+    ctrl->distance = (frame->mode == 2U) ? 0.0f : -1.0f;
+    ctrl->blank = 0;
+    ctrl->FRAME_TAIL = frame->tail[0];
+    ctrl->FRAME_TAIL_2 = frame->tail[1];
+}
+
+void USB_CDC_ProcessReceived(uint8_t *buf, uint32_t len)
+{
+    uint32_t i;
+    uint8_t frame_received = 0;
+
+    if (buf == NULL || len < VISION_RX_FRAME_LENGTH)
+    {
+        return;
+    }
+
+    for (i = 0; i + VISION_RX_FRAME_LENGTH <= len; i++)
+    {
+        if (buf[i] == 0x5A &&
+            buf[i + 1] == 0xA5 &&
+            buf[i + VISION_RX_FRAME_LENGTH - 2] == 0x7F &&
+            buf[i + VISION_RX_FRAME_LENGTH - 1] == 0xFE)
         {
-            vision_memory_from_buffer(&process_buf[i], &vision_rx_data.frame);
-            RresPi.Rec.FRAME_HEADER = 0xFF;
-            RresPi.Rec.mode = vision_rx_data.frame.mode;
-            RresPi.Rec.x = vision_rx_data.frame.yaw;
-            RresPi.Rec.y = -vision_rx_data.frame.pitch;
-            RresPi.Rec.distance = (vision_rx_data.frame.mode == 2) ? 0.0f : -1.0f;
+            vision_memory_from_buffer(&buf[i], &vision_rx_data.frame);
+            vision_update_ctrl_from_frame(&vision_rx_data.frame, &RresPi.Rec);
             vision_last_target_time = HAL_GetTick();
-            RresPi.Rec.blank = 0;
-            RresPi.Rec.FRAME_TAIL = 0x0D;
             frame_received = 1;
             i += VISION_RX_FRAME_LENGTH - 1;
         }
@@ -277,14 +128,10 @@ static void Usart1Receive_IDLE(void)
 
 void USART1_IDLE_Handler(void)
 {
-    if (RESET != __HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))
-    {
-        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
-        Usart1Receive_IDLE();
-    }
+    return; 
 }
 
 CTRL *get_AUTO_control_point(void)
 {
-    return &RresPi.Rec; 
+    return &RresPi.Rec;
 }

@@ -175,8 +175,8 @@ void MX_FREERTOS_Init(void) {
     osThreadDef(REFEREE, referee_usart_task, osPriorityNormal, 0, 128);//RM裁判系统数据处理
     referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);
 
-    osThreadDef(USBTask, usb_task, osPriorityNormal, 0, 128);//usb输出错误信息
-    usb_task_handle = osThreadCreate(osThread(USBTask), NULL);
+//    osThreadDef(USBTask, usb_task, osPriorityNormal, 0, 128);//usb输出错误信息
+//    usb_task_handle = osThreadCreate(osThread(USBTask), NULL);
 
     osThreadDef(BATTERY_VOLTAGE, battery_voltage_task, osPriorityNormal, 0, 128);//电源采样和计算电源百分比
     battery_voltage_handle = osThreadCreate(osThread(BATTERY_VOLTAGE), NULL);
@@ -201,7 +201,7 @@ void MX_FREERTOS_Init(void) {
 __weak void test_task(void const * argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
+  // MX_USB_DEVICE_Init();
   /* USER CODE BEGIN test_task */
   /* Infinite loop */
   for(;;)

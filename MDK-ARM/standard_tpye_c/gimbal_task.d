@@ -86,3 +86,4 @@ standard_tpye_c\gimbal_task.o: ..\application\chassis_behaviour.h
 standard_tpye_c\gimbal_task.o: ..\application\chassis_task.h
 standard_tpye_c\gimbal_task.o: ..\application\gimbal_task.h
 standard_tpye_c\gimbal_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h
+standard_tpye_c\gimbal_task.o: ..\application\force_gimbal_core.h

@@ -156,7 +156,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
               
 		       motor_chassis[4].last_ecd=motor_chassis[4].ecd;
                motor_chassis[4].ecd=yaw_motor[1].para.pos*8192/6.25;
-
+            detect_hook(YAW_GIMBAL_MOTOR_TOE);
             break;
         }
 
@@ -196,6 +196,7 @@ else if (hcan==&hcan2){
               
 		       motor_pitch.last_ecd=motor_pitch.ecd;
             motor_pitch.ecd=pitch_motor.para.pos*8192/6.25;
+            detect_hook(PITCH_GIMBAL_MOTOR_TOE);
             break;
       }
 	//摩擦轮
