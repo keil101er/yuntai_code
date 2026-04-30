@@ -77,7 +77,12 @@
 
 #define YAW_FF_C_BASE (0.085531f * 0.6f)
 #define YAW_FF_C_POS  0.0f
-#define YAW_FF_C_NEG  0.5f
+#define YAW_FF_C_NEG  0.55f
+
+#define YAW_PD_KP_POS 9.0f
+#define YAW_PD_KD_POS 2.0f
+#define YAW_PD_KP_NEG 14.0f
+#define YAW_PD_KD_NEG 1.7f
 
 
 

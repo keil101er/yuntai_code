@@ -1387,8 +1387,8 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         float error_pos = rad_format(yaw_smoother.out_pos - control_loop->gimbal_yaw_motor.absolute_angle);
         float error_vel = yaw_smoother.out_vel - control_loop->gimbal_yaw_motor.motor_gyro;
 
-        float Kp = 14.0f;  // 你测好的暴躁位置环 Kp
-        float Kd = 1.7f;  // 你测好的强力速度环 Kd (避震)
+        float Kp = (error_pos >= 0.0f) ? YAW_PD_KP_POS : YAW_PD_KP_NEG;
+        float Kd = (error_pos >= 0.0f) ? YAW_PD_KD_POS : YAW_PD_KD_NEG;
         float pid_torque = (Kp * error_pos) + (Kd * error_vel);
 
         // 5. 最终下发力矩 = 闭环修正 + 物理前馈
