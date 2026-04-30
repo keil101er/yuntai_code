@@ -71,7 +71,18 @@ void ForceAxis_Init(ForceAxis_t *axis, ForceMotorType_e type, float scale,
     axis->motor_type = type;
     axis->output_scale = scale; // 这里决定了是物理派还是工程派
     axis->J = j; axis->B = b; axis->C = c;
+    axis->C_pos = c;
+    axis->C_neg = c;
     axis->G_cos = g_cos; axis->G_sin = g_sin;
+}
+
+void ForceAxis_SetDirectionC(ForceAxis_t *axis, float c_pos, float c_neg) {
+    if (axis == NULL) {
+        return;
+    }
+
+    axis->C_pos = c_pos;
+    axis->C_neg = c_neg;
 }
 
 void ForceAxis_SetPID(ForceAxis_t *axis, float p_kp, float p_ki, float p_kd, 
@@ -184,7 +195,8 @@ void ForceAxis_Calc(ForceAxis_t *axis, ForceWorkMode_e mode, float t_sec) {
     if (mode != MODE_MEASURE) {
         // A. 物理模型前馈 (The Physics/Black-Box Model)
         // 无论是真实的惯量，还是电压环的虚拟惯量，公式结构是一样的！
-        float friction_torque = axis->C * tanhf(axis->target_vel / 0.05f);
+        float c_direction = (axis->target_vel >= 0.0f) ? axis->C_pos : axis->C_neg;
+        float friction_torque = c_direction * tanhf(axis->target_vel / 0.05f);
 
         axis->ff_torque = 
             axis->J * axis->target_acc +

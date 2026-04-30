@@ -75,7 +75,9 @@
 #define PITCH_AUTO_ABSOLUTE_PID_MAX_OUT 10.0f
 #define PITCH_AUTO_ABSOLUTE_PID_MAX_IOUT 0.0f
 
-
+#define YAW_FF_C_BASE (0.085531f * 0.6f)
+#define YAW_FF_C_POS  0.0f
+#define YAW_FF_C_NEG  0.5f
 
 
 

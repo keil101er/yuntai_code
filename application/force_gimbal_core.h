@@ -74,6 +74,8 @@ typedef struct {
     float J;      // 惯量 (或 电压惯量)
     float B;      // 粘滞 (或 反电动势补偿)
     float C;      // 摩擦 (或 电压死区)
+    float C_pos;
+    float C_neg;
     float G_cos;  // 重力余弦项
     float G_sin;  // 重力正弦项 (解决重心偏移)
 
@@ -112,6 +114,7 @@ typedef struct {
 // 初始化一个轴
 void ForceAxis_Init(ForceAxis_t *axis, ForceMotorType_e type, float scale, 
                     float j, float b, float c, float g_cos, float g_sin);
+void ForceAxis_SetDirectionC(ForceAxis_t *axis, float c_pos, float c_neg);
 
 // 设置 PID
 void ForceAxis_SetPID(ForceAxis_t *axis, float p_kp, float p_ki, float p_kd, 

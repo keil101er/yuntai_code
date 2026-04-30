@@ -59,6 +59,8 @@ TrajectorySmoother_t pitch_smoother;
 static uint8_t last_mode_flag = 0;
 #define aim_color 0 //      //识别红色是0，蓝色是1
 
+
+
 #define aim_color_id (robot_state.robot_id)
 fp32 add_yaw_angle = 0.0f;
 fp32 add_pitch_angle = 0.0f;
@@ -778,8 +780,9 @@ static void gimbal_init(gimbal_control_t *init)
     ForceAxis_Init(&yaw_axis, MOTOR_TYPE_DM_MIT, 1.0f, 
                 0.003f,             // J: 转动惯量//0.003974
                 0.04f,             // B: 粘滞摩擦//0.064310
-                0.085531f * 0.6f,      // C: 库伦摩擦
+                YAW_FF_C_BASE,      // C: 库伦摩擦
                 0.0f, 0.0f);           // G_cos, G_sin (Yaw轴无重力)
+    ForceAxis_SetDirectionC(&yaw_axis, YAW_FF_C_POS, YAW_FF_C_NEG);
 
     // 2. 注入极其硬朗的 PID (完全接管原来的串级 PID)
     ForceAxis_SetPID(&yaw_axis, 
