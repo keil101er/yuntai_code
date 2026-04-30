@@ -1170,7 +1170,7 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
     gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_auto_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
     if(gimbal_motor->motor_gyro_set < -0.2f)
     {
-        gimbal_motor->current_set -=0.3f;
+        gimbal_motor->current_set -=0.4f;
     }
     // }
     // 控制值赋值
