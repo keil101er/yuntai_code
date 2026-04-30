@@ -53,8 +53,10 @@
 #define PITCH_AUTO_SPEED_PID_MAX_IOUT  1.0f
 
 // pitch静摩擦前馈，按目标角速度方向分别补偿
-#define PITCH_STATIC_FF_GYRO_SET_THRESHOLD 0.08f
-#define PITCH_STATIC_FF_POS                0.2f
+#define PITCH_STATIC_FF_GYRO_SET_THRESHOLD 0.02f
+#define PITCH_STATIC_FF_FULL_GYRO          0.2f
+#define PITCH_STATIC_FF_HOLD               -0.65f
+#define PITCH_STATIC_FF_POS                0.3f
 #define PITCH_STATIC_FF_NEG                -1.6f
 
 //pitch gyro angle close-loop PID params, max out and max iout
@@ -88,7 +90,7 @@
 #define YAW_SPEED_PID_MAX_IOUT  1.0f 
 
 //yaw自瞄 速度环 PID参数以及 PID最大输出，积分输出
-#define YAW_AUTO_SPEED_PID_KP        1.56f
+#define YAW_AUTO_SPEED_PID_KP        1.8f
 #define YAW_AUTO_SPEED_PID_KI        0.00f
 #define YAW_AUTO_SPEED_PID_KD        0.00f
 #define YAW_AUTO_SPEED_PID_MAX_OUT   5.0f
@@ -104,7 +106,7 @@
 
 //yaw gyro angle close-loop PID params, max out and max iout
 //yaw 自瞄角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
-#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       16.5f
+#define YAW_AUTO_LOW_ABSOLUTE_PID_KP       18.0f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KI       0.0f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_KD       -0.1f
 #define YAW_AUTO_LOW_ABSOLUTE_PID_MAX_OUT   10.0f

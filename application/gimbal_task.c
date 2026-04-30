@@ -1168,6 +1168,10 @@ static void gimbal_motor_auto_angle_control(gimbal_motor_t *gimbal_motor)
     // {
     gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_low_auto_angle_pid, gimbal_motor->absolute_angle, gimbal_motor->absolute_angle_set, gimbal_motor->motor_gyro);
     gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_auto_motor_gyro_pid, gimbal_motor->motor_gyro, gimbal_motor->motor_gyro_set);
+    if(gimbal_motor->motor_gyro_set < -0.2f)
+    {
+        gimbal_motor->current_set -=0.3f;
+    }
     // }
     // 控制值赋值
     // gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
@@ -1469,6 +1473,10 @@ static void gimbal_motor_raw_angle_control(gimbal_motor_t *gimbal_motor)
 
 static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor)
 {
+    fp32 gyro_set;
+    fp32 abs_gyro_set;
+    fp32 blend_rate;
+
     if (gimbal_motor == NULL)
     {
         return 0.0f;
@@ -1480,23 +1488,39 @@ static fp32 pitch_static_feedforward(const gimbal_motor_t *gimbal_motor)
     }
     if(gimbal_motor->gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
-        if (gimbal_motor->motor_gyro_set > PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+        gyro_set = gimbal_motor->motor_gyro_set;
+        abs_gyro_set = fabs(gyro_set);
+
+        if (abs_gyro_set <= PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
         {
-            return PITCH_STATIC_FF_POS;
+            return PITCH_STATIC_FF_HOLD;
         }
-        else if (gimbal_motor->motor_gyro_set < -PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
+
+        if (PITCH_STATIC_FF_FULL_GYRO <= PITCH_STATIC_FF_GYRO_SET_THRESHOLD)
         {
-            return PITCH_STATIC_FF_NEG;
+            blend_rate = 1.0f;
         }
         else
         {
-            return -0.65f;
+            blend_rate = (abs_gyro_set - PITCH_STATIC_FF_GYRO_SET_THRESHOLD) /
+                         (PITCH_STATIC_FF_FULL_GYRO - PITCH_STATIC_FF_GYRO_SET_THRESHOLD);
+            abs_limit(&blend_rate, 1.0f);
         }
 
+        blend_rate = blend_rate * blend_rate * (3.0f - 2.0f * blend_rate);
+
+        if (gyro_set > 0.0f)
+        {
+            return PITCH_STATIC_FF_HOLD + (PITCH_STATIC_FF_POS - PITCH_STATIC_FF_HOLD) * blend_rate;
+        }
+        else
+        {
+            return PITCH_STATIC_FF_HOLD + (PITCH_STATIC_FF_NEG - PITCH_STATIC_FF_HOLD) * blend_rate;
+        }
     }
     else
     {
-        return -0.65f;
+        return PITCH_STATIC_FF_HOLD;
     }
 }
 
