@@ -792,7 +792,7 @@ static void gimbal_init(gimbal_control_t *init)
                 0.001f,   // J  //0.001
                 0.02f,    // B  //0.05
                 0.0f,    // C  //0.02
-                -0.5f,     // G_cos (重力前馈，极度重要)
+                -0.65f,     // G_cos (重力前馈，极度重要)
                 0.0f);    // G_sin
                 
     // 注入保守的 Pitch PID (防止上电疯转)
@@ -1462,14 +1462,18 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         float error_vel_pitch = pitch_smoother.out_vel - control_loop->gimbal_pitch_motor.motor_gyro;
 
         float stiction_torque = 0.0f;
-        float deadband = 0.002f;  // 极小的死区（约 0.1度），防止在原点高频发抖
+        float deadband = 0.01f;  // 极小的死区（约 0.5 度），防止在原点高频发抖
         
         if (error_pos_pitch > deadband) {
             // 目标在上方，直接给 0.4Nm 踹开向上的摩擦力！
-            stiction_torque = 0.4f; 
+            stiction_torque = 0.7f; 
         } else if (error_pos_pitch < -deadband) {
             // 目标在下方，直接给 -0.4Nm 踹开向下的摩擦力！
-            stiction_torque = -0.4f;
+            stiction_torque = -0.95f;
+        }
+        else
+        {
+            stiction_torque = 0.0f;
         }
         
         float Kp_pitch = 9.5f;   // 你之前写的保命位置环 Kp

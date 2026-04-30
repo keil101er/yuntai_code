@@ -190,7 +190,8 @@ void ForceAxis_Calc(ForceAxis_t *axis, ForceWorkMode_e mode, float t_sec) {
             axis->J * axis->target_acc +
             axis->B * axis->target_vel +
             friction_torque +                       //axis->C * fsgn(axis->target_vel)
-            axis->G_cos * cosf(axis->current_pos) +
+            // axis->G_cos * cosf(axis->current_pos) +
+            axis->G_cos +
             axis->G_sin * sinf(axis->current_pos);
 
         // B. 串级 PID
