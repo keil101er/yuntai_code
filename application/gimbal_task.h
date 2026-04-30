@@ -53,9 +53,9 @@
 #define PITCH_AUTO_SPEED_PID_MAX_IOUT  1.0f
 
 // pitch静摩擦前馈，按目标角速度方向分别补偿
-#define PITCH_STATIC_FF_GYRO_SET_THRESHOLD 0.1f
-#define PITCH_STATIC_FF_POS                -0.09f
-#define PITCH_STATIC_FF_NEG                -1.21f
+#define PITCH_STATIC_FF_GYRO_SET_THRESHOLD 0.08f
+#define PITCH_STATIC_FF_POS                0.2f
+#define PITCH_STATIC_FF_NEG                -1.6f
 
 //pitch gyro angle close-loop PID params, max out and max iout
 //pitch 角度环 角度由陀螺仪解算 PID参数以及 PID最大输出，积分输出
