@@ -779,7 +779,7 @@ static void gimbal_init(gimbal_control_t *init)
     // 注意：库伦摩擦 C (0.085531) 已经打了 6 折防止静止高频滋滋声
     ForceAxis_Init(&yaw_axis, MOTOR_TYPE_DM_MIT, 1.0f, 
                 0.003f,             // J: 转动惯量//0.003974
-                0.04f,             // B: 粘滞摩擦//0.064310
+                0.06f,             // B: 粘滞摩擦//0.064310
                 YAW_FF_C_BASE,      // C: 库伦摩擦
                 0.0f, 0.0f);           // G_cos, G_sin (Yaw轴无重力)
     ForceAxis_SetDirectionC(&yaw_axis, YAW_FF_C_POS, YAW_FF_C_NEG);
@@ -1370,7 +1370,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
 
         // 2. 目标平滑处理
         if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO) {
-            yaw_smoother.w_n = 40.0f; 
+            yaw_smoother.w_n = 50.0f; 
         } else {
             yaw_smoother.w_n = 30.0f; 
         }
@@ -1446,7 +1446,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         float continuous_target_pitch = pitch_smoother.out_pos + error_to_target_pitch;
         
         if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO) {
-            pitch_smoother.w_n = 40.0f; 
+            pitch_smoother.w_n = 50.0f; 
         } else {
             pitch_smoother.w_n = 30.0f; 
         }
@@ -1469,7 +1469,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         
         if (error_pos_pitch > deadband) {
             // 目标在上方，直接给 0.4Nm 踹开向上的摩擦力！
-            stiction_torque = 0.7f; 
+            stiction_torque = 0.67f; 
         } else if (error_pos_pitch < -deadband) {
             // 目标在下方，直接给 -0.4Nm 踹开向下的摩擦力！
             stiction_torque = -0.95f;
@@ -1480,7 +1480,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         }
         
         float Kp_pitch = 9.5f;   // 你之前写的保命位置环 Kp
-        float Kd_pitch = 0.55f;  // 你之前写的保命速度环 Kd
+        float Kd_pitch = 0.3f;  // 你之前写的保命速度环 Kd
          float pid_torque_pitch = (Kp_pitch * error_pos_pitch) + (Kd_pitch * error_vel_pitch)+ stiction_torque;
     
         // 5. 最终下发力矩
