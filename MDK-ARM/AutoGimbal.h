@@ -8,6 +8,11 @@
 #define VISION_RX_FRAME_LENGTH 29
 #define VISION_TX_FRAME_LENGTH 43
 
+// 1: USB CDC虚拟串口, 0: USART1普通串口DMA+IDLE
+#ifndef VISION_USE_USB_CDC
+#define VISION_USE_USB_CDC 1
+#endif
+
 #define PITCH_AUTO_SEN    0.017f                            //
 #define YAW_AUTO_SEN  0.031f                                //0.021f  
 #define YAW_AUTO_SEN_WZ  0.031f   

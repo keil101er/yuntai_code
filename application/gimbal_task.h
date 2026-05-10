@@ -75,13 +75,15 @@
 #define PITCH_AUTO_ABSOLUTE_PID_MAX_OUT 10.0f
 #define PITCH_AUTO_ABSOLUTE_PID_MAX_IOUT 0.0f
 
+//yaw静摩擦前馈，按目标角速度方向分别补偿
 #define YAW_FF_C_BASE (0.085531f * 0.6f)
-#define YAW_FF_C_POS  (0.085531f * 0.4f)
-#define YAW_FF_C_NEG  (0.085531f * 1.0f)
+#define YAW_FF_C_POS  (0.085531f * 0.6f)
+#define YAW_FF_C_NEG  (0.085531f * 0.6f)
 
-#define YAW_PD_KP_POS 10.0f
+//yaw自瞄陀螺仪角度环PD参数
+#define YAW_PD_KP_POS 13.0f
 #define YAW_PD_KD_POS 1.7f
-#define YAW_PD_KP_NEG 16.0f
+#define YAW_PD_KP_NEG 13.0f
 #define YAW_PD_KD_NEG 1.7f
 
 

@@ -373,8 +373,8 @@ void gimbal_task(void const *pvParameters)
 
                 // 将 PID 输出转换为电机驱动电流（int16_t 范围）
                 // Convert PID output to motor drive current (int16_t range)
-                shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out);
-                shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out);
+                shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out) - 50.0f;
+                shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out) + 30.0f;
 
                 // 通过 CAN 总线发送摩擦轮电机电流指令
                 // Send friction wheel motor current commands via CAN bus

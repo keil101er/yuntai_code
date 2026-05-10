@@ -1,6 +1,13 @@
 #include "AutoGimbal.h"
+
+#if VISION_USE_USB_CDC
+#include "usb_device.h"
 #include "usbd_cdc_if.h"
-#include "usb_task.h"
+#else
+extern UART_HandleTypeDef huart1;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+#endif
+
 volatile uint32_t vision_last_target_time = 0;
 
 typedef union
@@ -12,12 +19,19 @@ typedef union
 static vision_rx_buffer_t vision_rx_data;
 static BUF RresPi;
 static uint8_t vision_tx_buffer[VISION_TX_FRAME_LENGTH];
+#if !VISION_USE_USB_CDC
+static uint8_t sbus_rx_double_buf[2][BUFLENGTH];
+static uint8_t rx_buf_idx = 0;
+#endif
 
 vision_tx_buffer_t auto_to_nuc_data;
+#if VISION_USE_USB_CDC
 extern USBD_HandleTypeDef hUsbDeviceFS;
+#endif
 
 void vision_try_transmit(void)
 {
+#if VISION_USE_USB_CDC
     USBD_CDC_HandleTypeDef *hcdc;
 
     if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED || hUsbDeviceFS.pClassData == NULL)
@@ -33,11 +47,34 @@ void vision_try_transmit(void)
 
     memcpy(vision_tx_buffer, auto_to_nuc_data.raw, sizeof(vision_tx_buffer));
     (void)CDC_Transmit_FS(vision_tx_buffer, sizeof(vision_tx_buffer));
+#else
+    if (huart1.gState == HAL_UART_STATE_READY)
+    {
+        memcpy(vision_tx_buffer, auto_to_nuc_data.raw, sizeof(vision_tx_buffer));
+        HAL_UART_Transmit_DMA(&huart1, vision_tx_buffer, sizeof(vision_tx_buffer));
+    }
+#endif
 }
 
 void AUTO_control_init(void)
 {
-    MX_USB_DEVICE_Init();
+#if VISION_USE_USB_CDC
+    static uint8_t usb_inited = 0;
+    if (usb_inited == 0U)
+    {
+        MX_USB_DEVICE_Init();
+        usb_inited = 1U;
+    }
+#else
+    static uint8_t uart_inited = 0;
+    if (uart_inited == 0U)
+    {
+        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+        rx_buf_idx = 0;
+        HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
+        uart_inited = 1U;
+    }
+#endif
     vision_last_target_time = 0;
     memset(&RresPi, 0, sizeof(RresPi));
     memset(&vision_rx_data, 0, sizeof(vision_rx_data));
@@ -95,7 +132,7 @@ static void vision_update_ctrl_from_frame(const vision_rx_frame_t *frame, CTRL *
     ctrl->FRAME_TAIL_2 = frame->tail[1];
 }
 
-void USB_CDC_ProcessReceived(uint8_t *buf, uint32_t len)
+static void vision_process_received(uint8_t *buf, uint32_t len)
 {
     uint32_t i;
     uint8_t frame_received = 0;
@@ -126,9 +163,39 @@ void USB_CDC_ProcessReceived(uint8_t *buf, uint32_t len)
     }
 }
 
+void USB_CDC_ProcessReceived(uint8_t *buf, uint32_t len)
+{
+#if VISION_USE_USB_CDC
+    vision_process_received(buf, len);
+#else
+    (void)buf;
+    (void)len;
+#endif
+}
+
 void USART1_IDLE_Handler(void)
 {
-    return; 
+#if VISION_USE_USB_CDC
+    return;
+#else
+    uint16_t data_length;
+    uint8_t *process_buf;
+
+    if (RESET == __HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))
+    {
+        return;
+    }
+
+    __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+    HAL_UART_AbortReceive(&huart1);
+
+    data_length = BUFLENGTH - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
+    process_buf = sbus_rx_double_buf[rx_buf_idx];
+    rx_buf_idx ^= 1;
+
+    HAL_UART_Receive_DMA(&huart1, sbus_rx_double_buf[rx_buf_idx], BUFLENGTH);
+    vision_process_received(process_buf, data_length);
+#endif
 }
 
 CTRL *get_AUTO_control_point(void)
