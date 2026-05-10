@@ -351,12 +351,12 @@ void gimbal_task(void const *pvParameters)
 
                 // 将 PID 输出转换为电机驱动电流（int16_t 范围）
                 // Convert PID output to motor drive current (int16_t range)
-                shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out);
-                shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out);
+                shoot_control.fric_l_current = (int16_t)(shoot_control.fric_motor_L_pid.out) - 50.0f;
+                shoot_control.fric_r_current = (int16_t)(shoot_control.fric_motor_R_pid.out) + 30.0f;
 
                 // 通过 CAN 总线发送摩擦轮电机电流指令
                 // Send friction wheel motor current commands via CAN bus
-                CAN_cmd_fric(shoot_control.fric_r_current, shoot_control.fric_l_current, 0, 0);
+                CAN_cmd_fric(shoot_control.fric_r_current , shoot_control.fric_l_current, 0, 0);
                 // CAN_cmd_fric(1000.0f, -1000.0f, 0, 0);
             }
             // 射击标志为 0：停止摩擦轮
@@ -1230,9 +1230,9 @@ static void gimbal_motor_auto_angle_control_pitch(gimbal_motor_t *gimbal_motor)
     {
         return;
     }
-    if (gimbal_motor->absolute_angle_set > 0.4f)
+    if (gimbal_motor->absolute_angle_set > 0.5f)
     {
-        gimbal_motor->absolute_angle_set = 0.4f;
+        gimbal_motor->absolute_angle_set = 0.5f;
     }
     else if (gimbal_motor->absolute_angle_set < -0.6f)
     {
@@ -1390,9 +1390,9 @@ static void gimbal_motor_absolute_angle_control_pitch(gimbal_motor_t *gimbal_mot
     {
         return;
     }
-    if (gimbal_motor->absolute_angle_set > 0.4f)
+    if (gimbal_motor->absolute_angle_set > 0.5f)
     {
-        gimbal_motor->absolute_angle_set = 0.4f;
+        gimbal_motor->absolute_angle_set = 0.5f;
     }
     else if (gimbal_motor->absolute_angle_set < -0.6f)
     {
