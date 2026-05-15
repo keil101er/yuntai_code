@@ -50,14 +50,3 @@ standard_tpye_c\autogimbal.o: ../application/referee.h
 standard_tpye_c\autogimbal.o: ../application/protocol/protocol.h
 standard_tpye_c\autogimbal.o: ../application/struct_typedef.h
 standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
-standard_tpye_c\autogimbal.o: ../Inc/usbd_cdc_if.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
-standard_tpye_c\autogimbal.o: ../Inc/usbd_conf.h
-standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
-standard_tpye_c\autogimbal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
-standard_tpye_c\autogimbal.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
-standard_tpye_c\autogimbal.o: ../application/usb_task.h

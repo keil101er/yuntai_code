@@ -82,9 +82,9 @@
 
 //yaw自瞄陀螺仪角度环PD参数
 #define YAW_PD_KP_POS 13.0f
-#define YAW_PD_KD_POS 1.7f
-#define YAW_PD_KP_NEG 13.0f
-#define YAW_PD_KD_NEG 1.7f
+#define YAW_PD_KD_POS 2.2f
+#define YAW_PD_KP_NEG 20.0f
+#define YAW_PD_KD_NEG 1.5f
 
 
 

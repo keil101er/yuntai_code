@@ -99,8 +99,8 @@ uint8_t auto_cnt=0;
 static uint32_t last_consumed_target_time = 0;
 extern volatile uint32_t vision_last_target_time;
 #define AUTO_AIM_HOLD_MS 100U
-#define AUTO_YAW_ERROR_LPF_ALPHA 0.8f
-#define AUTO_PITCH_ERROR_LPF_ALPHA 0.8f
+#define AUTO_YAW_ERROR_LPF_ALPHA 1.0f
+#define AUTO_PITCH_ERROR_LPF_ALPHA 1.0f
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,

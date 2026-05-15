@@ -10,7 +10,7 @@
 
 // 1: USB CDC虚拟串口, 0: USART1普通串口DMA+IDLE
 #ifndef VISION_USE_USB_CDC
-#define VISION_USE_USB_CDC 1
+#define VISION_USE_USB_CDC 0
 #endif
 
 #define PITCH_AUTO_SEN    0.017f                            //

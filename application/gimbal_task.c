@@ -120,6 +120,7 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update);
  * @retval         none
  */
 static void gimbal_mode_change_control_transit(gimbal_control_t *mode_change);
+static uint8_t gimbal_auto_target_is_valid(const gimbal_control_t *gimbal_control_set);
 /**
  * @brief          计算ecd与offset_ecd之间的相对角度
  * @param[in]      ecd: 电机当前编码
@@ -228,6 +229,8 @@ gimbal_control_t gimbal_control;
 static int16_t shoot_can_set_current = 0;
 fp32 yaw_can_set_current = 0;
 fp32 pitch_can_set_current = 0;
+// 自瞄绝对目标超时保护 / Auto-aim absolute target timeout guard.
+#define GIMBAL_AUTO_TARGET_TIMEOUT_MS 100U
 // 自瞄时 发给nuc的数据
 extern vision_tx_buffer_t auto_to_nuc_data;
 extern int board_receive_data[8];
@@ -1057,7 +1060,12 @@ static void gimbal_set_control(gimbal_control_t *set_control, c_fbpara_t *C_data
     else if (set_control->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
         // enconde模式下，电机编码角度控制
-        gimbal_auto_angle_limit(&set_control->gimbal_yaw_motor, add_yaw_angle);
+        if (gimbal_auto_target_is_valid(set_control))
+        {
+            // AUTO使用视觉绝对角，不再叠加误差增量 / AUTO uses vision absolute angle, not an incremental error.
+            set_control->gimbal_yaw_motor.absolute_angle_set =
+                rad_format(set_control->gimbal_AUTO_ctrl->yaw);
+        }
     }
 
     // pitch电机模式控制
@@ -1078,9 +1086,42 @@ static void gimbal_set_control(gimbal_control_t *set_control, c_fbpara_t *C_data
     }
     else if (set_control->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO)
     {
-        // enconde模式下，电机编码角度控制
-        gimbal_auto_angle_limit(&set_control->gimbal_pitch_motor, add_pitch_angle); //////////////////////////////////////////添加限位
+        if (gimbal_auto_target_is_valid(set_control))
+        {
+            fp32 pitch_set = set_control->gimbal_AUTO_ctrl->pitch;
+
+            // AUTO使用视觉绝对角，不再叠加误差增量 / AUTO uses vision absolute angle, not an incremental error.
+            // pitch沿用现有机械安全范围限幅 / Clamp pitch to the existing mechanical-safe range.
+            if (pitch_set > 0.4f)
+            {
+                pitch_set = 0.4f;
+            }
+            else if (pitch_set < -0.6f)
+            {
+                pitch_set = -0.6f;
+            }
+
+            set_control->gimbal_pitch_motor.absolute_angle_set = pitch_set;
+        }
     }
+}
+
+static uint8_t gimbal_auto_target_is_valid(const gimbal_control_t *gimbal_control_set)
+{
+    uint32_t target_age;
+
+    if (gimbal_control_set == NULL || gimbal_control_set->gimbal_AUTO_ctrl == NULL)
+    {
+        return 0U;
+    }
+
+    if (vision_last_target_time == 0U || gimbal_control_set->gimbal_AUTO_ctrl->mode == 0U)
+    {
+        return 0U;
+    }
+
+    target_age = HAL_GetTick() - vision_last_target_time;
+    return (target_age < GIMBAL_AUTO_TARGET_TIMEOUT_MS) ? 1U : 0U;
 }
 /**
  * @brief          gimbal control mode :GIMBAL_MOTOR_GYRO, use euler angle calculated by gyro sensor to control.
@@ -1481,7 +1522,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         
         float Kp_pitch = 9.5f;   // 你之前写的保命位置环 Kp
         float Kd_pitch = 0.3f;  // 你之前写的保命速度环 Kd
-         float pid_torque_pitch = (Kp_pitch * error_pos_pitch) + (Kd_pitch * error_vel_pitch)+ stiction_torque;
+         float pid_torque_pitch = (Kp_pitch * error_pos_pitch) + (Kd_pitch * error_vel_pitch) + stiction_torque;
     
         // 5. 最终下发力矩
         // control_loop->gimbal_pitch_motor.given_current = pid_torque_pitch + pitch_axis.total_torque; 
