@@ -231,6 +231,19 @@ fp32 yaw_can_set_current = 0;
 fp32 pitch_can_set_current = 0;
 // 自瞄绝对目标超时保护 / Auto-aim absolute target timeout guard.
 #define GIMBAL_AUTO_TARGET_TIMEOUT_MS 100U
+// yaw视觉速度前馈参数 / Yaw vision velocity feedforward parameters.
+#define YAW_VISION_VEL_LIMIT 2.5f
+#define YAW_VISION_VEL_LPF_ALPHA 0.50f
+#define YAW_VISION_VEL_FF_GAIN 0.8f
+// yaw速度反馈目标融合参数 / Yaw velocity tracking target fusion parameters.
+#define YAW_SMOOTHER_VEL_TRACK_GAIN (1.0f - YAW_VISION_VEL_FF_GAIN)
+#define YAW_VISION_VEL_TRACK_GAIN YAW_VISION_VEL_FF_GAIN
+// yaw视觉加速度前馈参数 / Yaw vision acceleration feedforward parameters.
+#define YAW_VISION_ACC_LIMIT 50.0f
+#define YAW_VISION_ACC_LPF_ALPHA 0.3f
+#define YAW_VISION_ACC_FF_GAIN 0.05f
+
+fp32 yaw_track_vel = 0.0f;
 // 自瞄时 发给nuc的数据
 extern vision_tx_buffer_t auto_to_nuc_data;
 extern int board_receive_data[8];
@@ -243,6 +256,8 @@ extern shoot_control_t shoot_control; // 射击数据
 extern shoot_data_t shoot_data_t1;
 
 uint16_t gimbal_motor_enable_cnt = 0;
+float pid_torque = 0.0f;
+
 
 void gimbal_task(void const *pvParameters)
 {
@@ -1421,16 +1436,67 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         if (yaw_smoother.out_acc < -80.0f) yaw_smoother.out_acc = -80.0f;
 
         // 3. 产出极其纯净的物理前馈力矩 (因为 Kp=0)
-        ForceAxis_SetTarget(&yaw_axis, yaw_smoother.out_pos, yaw_smoother.out_vel, yaw_smoother.out_acc);
+        // yaw前馈速度融合：反馈仍用smoother速度，视觉速度只进入ForceAxis前馈。
+        // Yaw feedforward velocity fusion: feedback still uses smoother velocity.
+        static fp32 yaw_vision_vel_lpf = 0.0f;
+        static fp32 yaw_vision_acc_lpf = 0.0f;
+        fp32 yaw_ff_vel = yaw_smoother.out_vel;
+        fp32 yaw_ff_acc = yaw_smoother.out_acc;
+        yaw_track_vel = yaw_smoother.out_vel;
+
+        if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_AUTO &&
+            gimbal_auto_target_is_valid(control_loop))
+        {
+            fp32 vision_yaw_vel = control_loop->gimbal_AUTO_ctrl->yaw_vel;
+            fp32 vision_yaw_acc = control_loop->gimbal_AUTO_ctrl->yaw_acc;
+
+            if (vision_yaw_vel > YAW_VISION_VEL_LIMIT)
+            {
+                vision_yaw_vel = YAW_VISION_VEL_LIMIT;
+            }
+            else if (vision_yaw_vel < -YAW_VISION_VEL_LIMIT)
+            {
+                vision_yaw_vel = -YAW_VISION_VEL_LIMIT;
+            }
+
+            yaw_vision_vel_lpf +=
+                YAW_VISION_VEL_LPF_ALPHA * (vision_yaw_vel - yaw_vision_vel_lpf);
+            yaw_track_vel =
+                YAW_SMOOTHER_VEL_TRACK_GAIN * yaw_smoother.out_vel +
+                YAW_VISION_VEL_TRACK_GAIN * yaw_vision_vel_lpf;
+            yaw_ff_vel = yaw_track_vel;
+
+            if (vision_yaw_acc > YAW_VISION_ACC_LIMIT)
+            {
+                vision_yaw_acc = YAW_VISION_ACC_LIMIT;
+            }
+            else if (vision_yaw_acc < -YAW_VISION_ACC_LIMIT)
+            {
+                vision_yaw_acc = -YAW_VISION_ACC_LIMIT;
+            }
+
+            yaw_vision_acc_lpf +=
+                YAW_VISION_ACC_LPF_ALPHA * (vision_yaw_acc - yaw_vision_acc_lpf);
+            yaw_ff_acc =  (1.0f - YAW_VISION_ACC_FF_GAIN) * yaw_smoother.out_acc + YAW_VISION_ACC_FF_GAIN * yaw_vision_acc_lpf;
+        }
+        else
+        {
+            // 视觉无效或丢帧时清零前馈，避免旧速度继续推动云台。
+            // Clear feedforward when vision is invalid or stale.
+            yaw_vision_vel_lpf = 0.0f;
+            yaw_vision_acc_lpf = 0.0f;
+        }
+
+        ForceAxis_SetTarget(&yaw_axis, yaw_smoother.out_pos, yaw_ff_vel, yaw_ff_acc);
         ForceAxis_Calc(&yaw_axis, MODE_COMPETITION, HAL_GetTick() / 1000.0f);
         
         // 4. 🎯 在 STM32 里手搓完美的 IMU 坐标系 PD 闭环！
         float error_pos = rad_format(yaw_smoother.out_pos - control_loop->gimbal_yaw_motor.absolute_angle);
-        float error_vel = yaw_smoother.out_vel - control_loop->gimbal_yaw_motor.motor_gyro;
+        float error_vel = yaw_track_vel - control_loop->gimbal_yaw_motor.motor_gyro;
 
         float Kp = (error_pos >= 0.0f) ? YAW_PD_KP_POS : YAW_PD_KP_NEG;
         float Kd = (error_pos >= 0.0f) ? YAW_PD_KD_POS : YAW_PD_KD_NEG;
-        float pid_torque = (Kp * error_pos) + (Kd * error_vel);
+        pid_torque = (Kp * error_pos) + (Kd * error_vel);
 
         // 5. 最终下发力矩 = 闭环修正 + 物理前馈
         //control_loop->gimbal_yaw_motor.given_current_yaw = pid_torque + yaw_axis.total_torque; 
@@ -1482,6 +1548,16 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
     else 
     {
         // 1. 跳变处理
+        // Pitch absolute target safety clamp / Pitch 绝对目标角安全限幅，防止目标角继续累加后 rad_format 翻转。
+        if (control_loop->gimbal_pitch_motor.absolute_angle_set > 0.5f)
+        {
+            control_loop->gimbal_pitch_motor.absolute_angle_set = 0.5f;
+        }
+        else if (control_loop->gimbal_pitch_motor.absolute_angle_set < -0.6f)
+        {
+            control_loop->gimbal_pitch_motor.absolute_angle_set = -0.6f;
+        }
+
         float raw_target_pitch = control_loop->gimbal_pitch_motor.absolute_angle_set;
         float error_to_target_pitch = rad_format(raw_target_pitch - pitch_smoother.out_pos);
         float continuous_target_pitch = pitch_smoother.out_pos + error_to_target_pitch;
