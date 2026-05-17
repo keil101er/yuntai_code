@@ -239,7 +239,7 @@ fp32 pitch_can_set_current = 0;
 #define YAW_SMOOTHER_VEL_TRACK_GAIN (1.0f - YAW_VISION_VEL_FF_GAIN)
 #define YAW_VISION_VEL_TRACK_GAIN YAW_VISION_VEL_FF_GAIN
 // yaw视觉加速度前馈参数 / Yaw vision acceleration feedforward parameters.
-#define YAW_VISION_ACC_LIMIT 50.0f
+#define YAW_VISION_ACC_LIMIT 70.0f
 #define YAW_VISION_ACC_LPF_ALPHA 0.3f
 #define YAW_VISION_ACC_FF_GAIN 0.05f
 
