@@ -241,9 +241,11 @@ fp32 pitch_can_set_current = 0;
 // yaw视觉加速度前馈参数 / Yaw vision acceleration feedforward parameters.
 #define YAW_VISION_ACC_LIMIT 70.0f
 #define YAW_VISION_ACC_LPF_ALPHA 0.3f
-#define YAW_VISION_ACC_FF_GAIN 0.05f
+#define YAW_VISION_ACC_FF_GAIN 0.5f
 
 fp32 yaw_track_vel = 0.0f;
+ fp32 error_pos=0.0f;
+ float error_vel=0.0f;
 // 自瞄时 发给nuc的数据
 extern vision_tx_buffer_t auto_to_nuc_data;
 extern int board_receive_data[8];
@@ -1491,13 +1493,13 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
         ForceAxis_Calc(&yaw_axis, MODE_COMPETITION, HAL_GetTick() / 1000.0f);
         
         // 4. 🎯 在 STM32 里手搓完美的 IMU 坐标系 PD 闭环！
-        float error_pos = rad_format(yaw_smoother.out_pos - control_loop->gimbal_yaw_motor.absolute_angle);
-        float error_vel = yaw_track_vel - control_loop->gimbal_yaw_motor.motor_gyro;
+        error_pos = rad_format(yaw_smoother.out_pos - control_loop->gimbal_yaw_motor.absolute_angle);
+        error_vel = yaw_track_vel - control_loop->gimbal_yaw_motor.motor_gyro;
 
         float Kp = (error_pos >= 0.0f) ? YAW_PD_KP_POS : YAW_PD_KP_NEG;
         float Kd = (error_pos >= 0.0f) ? YAW_PD_KD_POS : YAW_PD_KD_NEG;
         pid_torque = (Kp * error_pos) + (Kd * error_vel);
-
+        // pid_torque = Kp * (error_vel);
         // 5. 最终下发力矩 = 闭环修正 + 物理前馈
         //control_loop->gimbal_yaw_motor.given_current_yaw = pid_torque + yaw_axis.total_torque; 
         yaw_can_set_current = (pid_torque + yaw_axis.total_torque);
